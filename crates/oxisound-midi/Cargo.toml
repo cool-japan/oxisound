@@ -1,0 +1,15 @@
+[package]
+name = "oxisound-midi"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+description = "MIDI device I/O implementation for OxiSound, backed by midir"
+categories = ["multimedia::audio"]
+keywords = ["midi", "audio", "device", "cooljapan", "realtime"]
+
+[dependencies]
+oxisound-core = { workspace = true }
+midir = { workspace = true }

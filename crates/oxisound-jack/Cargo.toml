@@ -1,0 +1,25 @@
+[package]
+name = "oxisound-jack"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+description = "Direct JACK Audio Server client for OxiSound, providing zero-latency audio via the JACK process callback"
+categories = ["multimedia::audio"]
+keywords = ["jack", "audio", "realtime", "cooljapan", "low-latency"]
+
+[features]
+# No default features — the jack C-FFI dep is opt-in per COOLJAPAN Pure Rust policy.
+# Enable with: --features jack-backend
+# Requires libjack2 installed on the system (Linux/macOS).
+jack-backend = ["dep:jack"]
+
+[dependencies]
+oxisound-core = { workspace = true }
+log = { workspace = true }
+ringbuf = { workspace = true }
+jack = { version = "0.13.5", optional = true }
+
+[dev-dependencies]

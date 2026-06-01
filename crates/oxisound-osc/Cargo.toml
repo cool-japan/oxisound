@@ -1,0 +1,18 @@
+[package]
+name = "oxisound-osc"
+description = "Open Sound Control (OSC) protocol implementation for oxisound"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+keywords = ["osc", "open-sound-control", "midi", "audio", "network"]
+categories = ["multimedia::audio", "network-programming", "parser-implementations"]
+
+[features]
+default = ["std"]
+std = []
+
+[dependencies]
+log = { workspace = true }

@@ -1,0 +1,71 @@
+[package]
+name = "oxisound"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+description = "OxiSound — COOLJAPAN Pure-Rust audio device I/O facade"
+categories = ["multimedia::audio"]
+keywords = ["audio", "playback", "capture", "pure-rust", "cooljapan"]
+
+[features]
+default = ["pure"]
+pure = ["dep:oxisound-cpal"]
+jack = ["dep:oxisound-cpal", "oxisound-cpal/jack"]
+asio = ["dep:oxisound-cpal", "oxisound-cpal/asio"]
+tokio = ["dep:oxisound-cpal", "oxisound-cpal/tokio", "oxisound-core/tokio", "dep:futures-core", "dep:tokio-stream"]
+midi = ["dep:oxisound-midi"]
+smf = ["dep:oxisound-smf"]
+oxiaudio = ["pure", "oxisound-core/oxiaudio"]
+wasm = ["pure", "oxisound-cpal/wasm"]
+jack-native = ["dep:oxisound-jack", "oxisound-jack/jack-backend"]
+osc = ["dep:oxisound-osc"]
+
+[dependencies]
+oxisound-core = { workspace = true }
+oxisound-cpal = { workspace = true, optional = true }
+oxisound-midi = { workspace = true, optional = true }
+oxisound-smf = { workspace = true, optional = true }
+oxisound-jack = { workspace = true, optional = true }
+oxisound-osc = { workspace = true, optional = true }
+futures-core = { workspace = true, optional = true }
+tokio-stream = { workspace = true, optional = true }
+log = { workspace = true }
+
+[dev-dependencies]
+oxisound-core = { workspace = true }
+oxiaudio = { workspace = true }
+oxisound-smf = { workspace = true }
+tokio = { workspace = true, features = ["macros", "time", "rt", "net", "sync"] }
+tokio-tungstenite = { workspace = true }
+futures-util = { workspace = true }
+
+[[example]]
+name = "decode_play"
+required-features = ["pure"]
+
+[[example]]
+name = "realtime_eq"
+required-features = ["pure"]
+
+[[example]]
+name = "capture_encode"
+required-features = ["pure"]
+
+[[example]]
+name = "async_monitor"
+required-features = ["tokio"]
+
+[[example]]
+name = "ws_broadcast"
+required-features = ["tokio"]
+
+[[example]]
+name = "play_midi"
+required-features = ["smf", "midi"]
+
+[[example]]
+name = "smf_synth"
+required-features = ["smf"]

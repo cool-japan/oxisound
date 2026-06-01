@@ -1,0 +1,28 @@
+[package]
+name = "oxisound-core"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+description = "Core traits and types for OxiSound"
+categories = ["multimedia::audio"]
+keywords = ["audio", "device", "pure-rust", "cooljapan", "oxisound"]
+
+[dependencies]
+thiserror = { workspace = true }
+futures-core = { workspace = true, optional = true }
+serde = { workspace = true, optional = true, features = ["std"] }
+oxiaudio-core = { workspace = true, optional = true }
+
+[dev-dependencies]
+serde_json = { workspace = true }
+proptest = { workspace = true }
+
+[features]
+default = ["std"]
+std = []
+tokio = ["dep:futures-core", "std"]
+serde = ["dep:serde"]
+oxiaudio = ["dep:oxiaudio-core"]

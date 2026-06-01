@@ -1,0 +1,21 @@
+[package]
+name = "oxisound-smf"
+description = "Standard MIDI File (SMF) parser and player for oxisound"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+keywords = ["midi", "smf", "parser", "audio"]
+categories = ["multimedia::audio", "parser-implementations"]
+
+[features]
+default = ["std"]
+std = []
+serde = ["dep:serde", "oxisound-core/serde"]
+
+[dependencies]
+oxisound-core = { workspace = true }
+log = { workspace = true }
+serde = { workspace = true, optional = true }

@@ -1,0 +1,14 @@
+FROM rust:slim
+WORKDIR /app
+# GOVERNANCE §8 OS-boundary exception: cpal's Linux ALSA backend requires libasound dev headers.
+# cpal auto-selects ALSA on Linux via cfg(target_os) — it is not a feature, it is always-on.
+#
+# PipeWire: cpal 0.17.3 does not expose a pipewire feature; PipeWire access goes through the
+# ALSA or JACK compatibility layer. No libpipewire-dev required in the default closure.
+# When cpal exposes a native 'pipewire' feature in a future release, add:
+#   RUN apt-get install -y --no-install-recommends libpipewire-0.3-dev
+# and add 'pipewire = ["cpal/pipewire"]' to oxisound-cpal's [features].
+RUN apt-get update && apt-get install -y --no-install-recommends libasound2-dev pkg-config && rm -rf /var/lib/apt/lists/*
+COPY . .
+RUN cargo build --workspace 2>&1
+RUN bash scripts/ffi-audit.sh

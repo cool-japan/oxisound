@@ -1,0 +1,200 @@
+# oxisound — The COOLJAPAN audio device I/O facade
+
+[![Crates.io](https://img.shields.io/crates/v/oxisound.svg)](https://crates.io/crates/oxisound)
+[![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
+
+`oxisound` is the top-level façade crate for the OxiSound ecosystem. It gives you one flat, ergonomic API — `open_output`, `open_input`, `play_callback`, `enumerate_devices`, and friends — that hides which backend is doing the work. Cargo feature flags select the backend: the default `pure` feature uses the cpal backend ([`oxisound-cpal`](../oxisound-cpal)), while optional features pull in native JACK ([`oxisound-jack`](../oxisound-jack)), MIDI device I/O ([`oxisound-midi`](../oxisound-midi)), Standard MIDI File support ([`oxisound-smf`](../oxisound-smf)), or Open Sound Control ([`oxisound-osc`](../oxisound-osc)). All device traits and shared types come from [`oxisound-core`](../oxisound-core) and are re-exported at the crate root, so most programs only ever `use oxisound::…`.
+
+The crate is `#![forbid(unsafe_code)]` at the facade layer. **Pure-Rust status depends on the features you enable.** The default `pure` (cpal), `tokio`, `midi`, `smf`, and `osc` paths are Pure Rust. The `jack` and `jack-native` features link the system `libjack2`, and the `asio` feature requires the Steinberg ASIO SDK — these are **not** Pure Rust and exist only as opt-in escape hatches for low-latency professional audio.
+
+## Installation
+
+```toml
+[dependencies]
+# Default: Pure-Rust cpal backend
+oxisound = "0.1.0"
+
+# Async streaming (tokio) + Pure-Rust playback
+oxisound = { version = "0.1.0", features = ["tokio"] }
+
+# Add live MIDI + Standard MIDI File playback
+oxisound = { version = "0.1.0", features = ["midi", "smf"] }
+
+# Add Open Sound Control
+oxisound = { version = "0.1.0", features = ["osc"] }
+```
+
+## Quick Start
+
+```rust,no_run
+use oxisound::StreamConfig;
+
+// Open the default output device and play a 1-second sine tone.
+let mut stream = oxisound::open_output(StreamConfig::stereo_48k())
+    .expect("no output device");
+let buf = oxisound::sine_test_tone(440.0, 1.0, StreamConfig::stereo_48k());
+stream.write(&buf).expect("write failed");
+```
+
+### Zero-copy real-time callback
+
+```rust,no_run
+use oxisound::StreamConfig;
+
+// The closure runs on the real-time audio thread; drop the guard to stop.
+let _guard = oxisound::play_callback(StreamConfig::stereo_48k(), |buf| {
+    for s in buf.iter_mut() {
+        *s = 0.0; // fill with your own DSP
+    }
+}).expect("no output device");
+```
+
+### Enumerate devices
+
+```rust,no_run
+let devices = oxisound::enumerate_devices().expect("enumeration failed");
+print!("{}", oxisound::format_devices(&devices));
+```
+
+## Feature Flags
+
+| Feature | Default | Pure Rust | Pulls in | Enables |
+|---------|:-------:|:---------:|----------|---------|
+| `pure` | ✓ | ✓ | `oxisound-cpal` | cpal backend: `CpalDevice`, blocking + callback streams, device watch/hot-plug, auto-reconnect |
+| `tokio` | — | ✓ | `oxisound-cpal/tokio`, `tokio-stream`, `futures-core` | Async I/O: `async_output`, `capture_stream`, `watch_devices`, `AsyncInputStream`/`AsyncOutputStream` |
+| `midi` | — | ✓ | `oxisound-midi` | Live MIDI device I/O: `enumerate_midi_devices`, `open_midi_input`, `open_midi_output` |
+| `smf` | — | ✓ | `oxisound-smf` | Standard MIDI File read/play: `load_smf`, SMF re-exports (`SmfFile`, `SmfPlayer`, …) |
+| `osc` | — | ✓ | `oxisound-osc` | Open Sound Control: `encode_osc`/`decode_osc`, `OscSender`, `OscReceiver`, OSC types |
+| `oxiaudio` | — | ✓ | `oxisound-core/oxiaudio` | OxiAudio integration in `oxisound-core` (implies `pure`) |
+| `wasm` | — | ✓ | `oxisound-cpal/wasm` | WebAudio backend for `wasm32` targets (implies `pure`) |
+| `jack` | — | ✗ | `oxisound-cpal/jack` | cpal's JACK host (`jack_output`); requires `libjack2` |
+| `jack-native` | — | ✗ | `oxisound-jack` | Native low-latency JACK client (`jack_native_output`, `JackDevice`, …); requires `libjack2` |
+| `asio` | — | ✗ | `oxisound-cpal/asio` | ASIO backend (`asio_output`); requires the Steinberg ASIO SDK (Windows) |
+
+> The `smf` + `midi` combination additionally unlocks `play_smf` (parse and play a `.mid` straight to a MIDI port).
+
+## API Overview
+
+### Test-tone generators (no hardware, always available)
+
+Pure-computation helpers that return interleaved `Vec<f32>` buffers — handy for tests, demos, and DSP scaffolding.
+
+| Function | Description |
+|----------|-------------|
+| `sine_test_tone(freq_hz, duration_secs, config)` | Pure sine wave at a fixed frequency |
+| `white_noise_test(duration_secs, config)` | Deterministic white noise (seeded xorshift32) |
+| `chirp_test_tone(f_start, f_end, duration_secs, config)` | Linear frequency sweep with correct phase integration |
+| `silence(duration_secs, config)` | Zero-filled buffer |
+| `click_track(bpm, duration_secs, config)` | Metronome-style click track (1 ms attack, 5 ms decay) |
+| `format_devices(&[DeviceInfo]) -> String` | Human-readable multi-line device listing for debugging |
+
+### Device & stream entry points (`pure` feature)
+
+| Function | Returns | Description |
+|----------|---------|-------------|
+| `default_output()` / `default_input()` | `CpalDevice` | The system default output / input device |
+| `enumerate_devices()` | `Vec<DeviceInfo>` | All output devices on the default host |
+| `enumerate_input_devices()` | `Vec<DeviceInfo>` | All input devices |
+| `enumerate_all_devices()` | `Vec<DeviceInfo>` | All devices (input and output) in one call |
+| `device_by_index(index)` | `CpalDevice` | Output device by zero-based enumeration index |
+| `select_device(name_fragment)` | `CpalDevice` | First output device whose name contains the fragment (case-insensitive) |
+| `select_input_device(name_fragment)` | `CpalDevice` | First matching input device |
+| `open_output(config)` | `Box<dyn OutputStream>` | Default output device, opened for writing |
+| `open_input(config)` | `Box<dyn InputStream>` | Default input device, opened for reading |
+| `open_loopback(config)` | `Box<dyn InputStream>` | System-audio loopback capture (Linux PulseAudio/PipeWire; `Unsupported` elsewhere) |
+| `duplex_stream(config)` | `Box<dyn DuplexStream>` | Default device opened in duplex mode |
+| `preferred_output_config()` | `StreamConfig` | Sensible stereo 48 kHz config using the device's optimal buffer |
+| `latency_ms(&CpalDevice)` | `f32` | Device-level output latency estimate in milliseconds |
+
+### Callback streams (`pure` feature)
+
+| Function | Returns | Description |
+|----------|---------|-------------|
+| `play_callback(config, FnMut(&mut [f32]))` | `CpalCallbackOutputStream` | Output with a zero-copy RT callback |
+| `capture_callback(config, FnMut(&[f32]))` | `CpalCallbackInputStream` | Input with a zero-copy RT callback |
+| `duplex_callback(config, out_cb, in_cb)` | `DuplexCallbackGuard` | Simultaneous in+out callbacks; drop the guard to stop both |
+
+### Monitoring, hot-plug & resilience
+
+| Item | Feature | Description |
+|------|---------|-------------|
+| `stream_stats(&dyn OutputStream) -> Option<StreamStats>` | always | Snapshot of stream stats, or `None` if nothing collected yet |
+| `monitor_stream(stats_fn, interval_ms, callback) -> MonitorGuard` | non-wasm | Periodically sample stats from a background thread |
+| `on_device_change(FnMut(DeviceEvent)) -> DeviceChangeGuard` | `pure`, non-wasm | Synchronous callback on device add/remove/default-change (500 ms polling) |
+| `auto_reconnect_output(config) -> AutoReconnectGuard` | `pure`, non-wasm | Output stream that auto-reconnects on disconnect (exponential backoff 10→50→200→1000 ms); implements `OutputStream`, with `is_connected()` / `config()` |
+| `watch_devices() -> DeviceEventStream` | `tokio` | Async `Stream` of `DeviceEvent`s |
+
+### Async streaming (`tokio` feature)
+
+| Function | Returns | Description |
+|----------|---------|-------------|
+| `async_output(config)` | `impl AsyncOutputStream` | Async output stream on the default device (not object-safe) |
+| `capture_stream(config)` | `impl Stream<Item = Vec<f32>>` | Async stream of captured audio frames |
+
+### MIDI device I/O (`midi` feature)
+
+| Function | Returns | Description |
+|----------|---------|-------------|
+| `enumerate_midi_devices()` | `Vec<MidiDeviceInfo>` | All available MIDI devices |
+| `open_midi_input(port)` | `Box<dyn MidiInput>` | Open a MIDI input by port index |
+| `open_midi_output(port)` | `Box<dyn MidiOutput>` | Open a MIDI output by port index |
+
+### Standard MIDI File (`smf` feature)
+
+| Item | Feature | Description |
+|------|---------|-------------|
+| `load_smf(&[u8]) -> Result<SmfFile, SmfError>` | `smf` | Parse a `.mid` byte buffer |
+| `play_smf(&Path, midi_port)` | `smf` + `midi` | Parse a file and play it straight to a MIDI port (blocking) |
+| re-exports | `smf` | `SmfFile`, `SmfTrack`, `TrackEvent`, `SmfEvent`, `SmfFormat`, `Division`, `SmfPlayer`, `TempoMap`, `SmfError`, `parse_smf` |
+
+### Open Sound Control (`osc` feature)
+
+Re-exports from [`oxisound-osc`](../oxisound-osc): `OscArg`, `OscMessage`, `OscBundle`, `OscPacket`, `OscTimeTag`, `OscError`, `OscSender`, `OscReceiver`, plus `encode_osc` / `decode_osc` (the crate's `encode` / `decode` functions, renamed at re-export).
+
+### Native JACK (`jack-native` feature — not Pure Rust)
+
+| Item | Description |
+|------|-------------|
+| `jack_native_output(client_name, config)` | Open a native JACK output stream (lower latency than cpal's JACK host) |
+| `jack_native_input(client_name, config)` | Open a native JACK input stream |
+| `jack_midi_output(port_name)` / `jack_midi_input(port_name)` | Frame-accurate JACK MIDI ports |
+| re-exports | `JackDevice`, `JackOutputStream`, `JackInputStream`, `JackCallbackOutputStream`, `JackMidiInput`, `JackMidiOutput`, `JackMetrics`, `JackTransportState`, `JackTransportPosition`, `SysExEvent`, `SysExReassembler`, `MidiEntry`, helpers `is_realtime`, `is_status`, `midi_message_len`, const `MIDI_ENTRY_MAX` |
+
+### Session & permissions
+
+| Function | Description |
+|----------|-------------|
+| `configure_session(SessionCategory)` | Configure the audio session category (iOS/macOS; `UnsupportedConfig` elsewhere) |
+| `request_microphone_permission() -> bool` | Request mic access (iOS/macOS; `PermissionDenied` elsewhere) |
+
+### Re-exported core types (always at crate root)
+
+From [`oxisound-core`](../oxisound-core): `AudioDevice`, `InputStream`, `OutputStream`, `DuplexStream`, `StreamConfig`, `StreamStats`, `SampleFormat`, `NegotiatedConfig`, `Channel`, `ChannelRouting`, `HostApi`, `DeviceInfo`, `DeviceCapabilities`, `DeviceEvent`, `DeviceSelector`, `DefaultSelector`, `NameMatchSelector`, `LatencyOptimalSelector`, `DeviceNotificationCallback`, `CallbackPriority`, `MidiDevice`, `MidiInput`, `MidiOutput`, `MidiDeviceInfo`, `MidiMessage`, `SessionCategory`, `SessionInterruptionEvent`, and the crate error type `OxiSoundError`.
+
+Backend-specific re-exports appear under their features: `CpalDevice`, `CpalOutputStream`, `CpalCallbackInputStream`, `CpalCallbackOutputStream`, `CpalDeviceWatcher`, `DeviceChangeGuard`, `AdaptiveBufferSizer`, `StreamHealth` (`pure`); `CpalAsyncInputStream`, `CpalAsyncOutputStream`, `AsyncInputStream`, `AsyncOutputStream` (`tokio`).
+
+## Platform Support
+
+| Capability | macOS | Linux | Windows | iOS | Android |
+|------------|:-----:|:-----:|:-------:|:---:|:-------:|
+| Output stream | ✓ | ✓ | ✓ | ✓ | — |
+| Input stream | ✓ | ✓ | ✓ | ✓ | — |
+| Callback mode | ✓ | ✓ | ✓ | ✓ | — |
+| Device hot-plug | ✓ | ✓ | ✓ | — | — |
+| Auto-reconnect | ✓ | ✓ | ✓ | — | — |
+| JACK | ✓ | ✓ | — | — | — |
+| ASIO | — | — | ✓ | — | — |
+| Loopback capture | — | ✓ (Pulse/PipeWire) | planned | — | — |
+
+## Related crates
+
+- [`oxisound-core`](../oxisound-core) — device/stream traits and shared types (re-exported here)
+- [`oxisound-cpal`](../oxisound-cpal) — the default Pure-Rust cpal backend (`pure`, `tokio`, `wasm`, `jack`, `asio`)
+- [`oxisound-jack`](../oxisound-jack) — native JACK client backend (`jack-native`)
+- [`oxisound-midi`](../oxisound-midi) — live MIDI device I/O (`midi`)
+- [`oxisound-smf`](../oxisound-smf) — Standard MIDI File reader/writer/player (`smf`)
+- [`oxisound-osc`](../oxisound-osc) — Open Sound Control codec and UDP transport (`osc`)
+
+## License
+
+Apache-2.0 — COOLJAPAN OU (Team Kitasan)

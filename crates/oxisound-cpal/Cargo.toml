@@ -1,0 +1,45 @@
+[package]
+name = "oxisound-cpal"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+description = "cpal-backed audio device implementation for OxiSound"
+categories = ["multimedia::audio"]
+keywords = ["audio", "cpal", "device", "playback", "cooljapan"]
+
+[features]
+jack = ["cpal/jack"]
+asio = ["cpal/asio"]
+# tokio: async output/input stream wrappers.
+# Requires tokio runtime with sync+rt features.
+tokio = ["dep:tokio", "dep:futures-core", "oxisound-core/tokio"]
+# PipeWire note: cpal 0.17.3 does not expose a pipewire feature.
+# PipeWire access goes through the ALSA or JACK compatibility layer on Linux.
+# When cpal adds a native pipewire feature in a future release, add:
+#   pipewire = ["cpal/pipewire"]
+wasm = ["cpal/wasm-bindgen"]
+
+[dependencies]
+oxisound-core = { workspace = true }
+cpal = { workspace = true }
+# dasp_sample provides ToSample<f32> for input stream type-conversion.
+# cpal re-exports FromSample+Sample but not ToSample; we need it directly.
+dasp_sample = { workspace = true }
+ringbuf = { workspace = true }
+log = { workspace = true }
+tokio = { workspace = true, optional = true }
+futures-core = { workspace = true, optional = true }
+
+[dev-dependencies]
+criterion = { workspace = true }
+
+[[bench]]
+name = "ring_buffer"
+harness = false
+
+[[bench]]
+name = "format_conv"
+harness = false
