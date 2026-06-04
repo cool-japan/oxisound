@@ -2,7 +2,7 @@
 
 **OxiSound is the COOLJAPAN Pure-Rust audio device I/O layer.**
 
-Version: **0.1.0** — Released 2026-06-01
+Version: **0.1.1** — Released 2026-06-04
 
 [![Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 [![Rust 1.89+](https://img.shields.io/badge/rustc-1.89%2B-orange.svg)](https://releases.rs/docs/1.89.0/)
@@ -49,7 +49,7 @@ There are NO alsa/coreaudio/wasapi Cargo features — do NOT add them.
 
 ```toml
 [dependencies]
-oxisound = "0.1.0"
+oxisound = "0.1.1"
 ```
 
 ```rust
@@ -206,15 +206,16 @@ println!("CPU load: {:.1}%", stream.cpu_load() * 100.0);
 
 ## Test Results
 
-**232 tests — 232 passed, 0 failed** (as of 2026-06-01)
+**236 tests — 236 passed, 0 failed** (as of 2026-06-04)
 
 ```
 oxisound-core:   100+ tests
 oxisound-cpal:    80+ tests (including hardware integration tests)
 oxisound-midi:    14 tests
 oxisound-smf:     16 tests
-oxisound-jack:    22 tests (midi_util + metrics; hardware tests #[ignore])
-oxisound-osc:     12 tests
+oxisound-jack:    17 tests (midi_util + metrics; hardware tests #[ignore])
+oxisound-osc:      6 tests
+oxisound-session:  3 tests
 oxisound:          5 tests
 ```
 

@@ -1,0 +1,39 @@
+[package]
+name = "oxisound-session"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+description = "OxiSound — platform audio session management (iOS/macOS AVAudioSession)"
+categories = ["multimedia::audio"]
+keywords = ["audio", "session", "avaudiosession", "ios", "macos"]
+
+[features]
+default = []
+# Enables the real AVAudioSession implementation via objc2-avf-audio.
+# Only meaningful on iOS and macOS targets; on other platforms this feature
+# still compiles but all functions return `OxiSoundError::UnsupportedConfig`.
+avf-audio = ["dep:objc2", "dep:objc2-foundation", "dep:objc2-avf-audio", "dep:block2"]
+
+[dependencies]
+oxisound-core = { workspace = true }
+log = { workspace = true }
+thiserror = { workspace = true }
+
+[target.'cfg(any(target_os = "ios", target_os = "macos"))'.dependencies]
+objc2 = { version = "0.6.4", optional = true }
+objc2-foundation = { version = "0.3.2", optional = true }
+# AVAudioApplication: modern permission API (replaces deprecated AVAudioSession.requestRecordPermission:)
+objc2-avf-audio = { version = "0.3.2", optional = true, features = [
+    "AVAudioSession",
+    "AVAudioSessionTypes",
+    "AVAudioApplication",
+    "block2",
+] }
+# block2 is needed for the completion-handler block type passed to
+# requestRecordPermissionWithCompletionHandler:
+block2 = { version = "0.6.2", optional = true }
+
+[dev-dependencies]

@@ -7,6 +7,26 @@ OxiSound adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-06-04
+
+### Added
+
+#### oxisound-session (new crate)
+- New `oxisound-session` crate providing platform audio session management for iOS and macOS
+- `configure_session(category: SessionCategory) -> Result<(), OxiSoundError>`: sets the `AVAudioSession` category via Objective-C (`[AVAudioSession sharedInstance] setCategory:error:`) when the `avf-audio` feature is enabled; returns `Ok(())` on macOS CoreAudio desktop without the feature; returns `OxiSoundError::UnsupportedConfig` on all other platforms
+- `request_microphone_permission() -> Result<bool, OxiSoundError>`: queries or requests microphone recording permission using the modern `AVAudioApplication` API (iOS 17+ / macOS 14+); blocks the calling thread on iOS until the user responds (up to 30 s), then returns `OxiSoundError::Timeout`; reads TCC permission state on macOS without prompting
+- `avf-audio` feature: opt-in Objective-C FFI via `objc2`, `objc2-avf-audio`, `objc2-foundation`, and `block2`; default features remain 100% Pure Rust (no FFI)
+- Full platform dispatch: iOS+macOS with `avf-audio`, macOS without `avf-audio` (CoreAudio desktop stub), iOS without `avf-audio` (returns `UnsupportedConfig`/`PermissionDenied`), all other platforms (returns errors)
+
+#### oxisound (facade)
+- `session` feature: routes `configure_session()` and `request_microphone_permission()` through the new `oxisound-session` crate instead of the previous "pending" stubs
+- `macos-session` feature: convenience alias that enables `session` + `oxisound-session/avf-audio` in one flag
+- Criterion benchmark suite `benches/facade.rs`: benchmarks `sine_test_tone` throughput (100 ms / 1 s / 2 s at 48 kHz stereo), frequency independence, `default_output()` enumeration latency, and `default_output()` + `open_output()` round-trip; skips device benchmarks gracefully in headless CI
+
+### Changed
+- `configure_session()` in the facade now delegates to `oxisound-session` when the `session` feature is active; replaces the prior `log::warn!("... pending")` stub with a real AVFoundation call on Apple platforms
+- `request_microphone_permission()` in the facade now delegates to `oxisound-session` when the `session` feature is active; replaces the prior stub that always returned `Ok(true)` on Apple platforms with a real TCC/AVAudioApplication permission check
+
 ## [0.1.0] - 2026-06-01
 
 ### Added
@@ -114,4 +134,5 @@ OxiSound adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - **Platform gaps:** iOS/macOS audio session management and microphone permission APIs are stubs; PipeWire requires a running daemon (Linux only); Android testing requires NDK cross-compilation setup.
 
 [0.1.0]: https://github.com/cool-japan/oxisound/releases/tag/v0.1.0
-[Unreleased]: https://github.com/cool-japan/oxisound/compare/v0.1.0...HEAD
+[0.1.1]: https://github.com/cool-japan/oxisound/releases/tag/v0.1.1
+[Unreleased]: https://github.com/cool-japan/oxisound/compare/v0.1.1...HEAD

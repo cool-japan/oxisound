@@ -852,9 +852,15 @@ pub fn enumerate_all_devices() -> Result<Vec<DeviceInfo>, OxiSoundError> {
 
 /// Configures the audio session category for the current process.
 ///
-/// On iOS and macOS, this controls how the audio system routes and mixes audio.
-/// Returns `Ok(())` on macOS (platform implementation pending) with a warning logged.
-/// Returns `Err(OxiSoundError::UnsupportedConfig)` on all other platforms.
+/// - On **iOS / macOS with `macos-session` or `session` feature** (i.e.
+///   `oxisound-session/avf-audio`): calls `[AVAudioSession sharedInstance]
+///   setCategory:error:` via Objective-C. Returns `Ok(())` on success,
+///   [`OxiSoundError::FormatMismatch`] if the AVFoundation call fails.
+/// - On **macOS without the `session` feature** (CoreAudio desktop):
+///   logs a debug message and returns `Ok(())` — CoreAudio desktop apps do
+///   not require explicit session management.
+/// - On **all other platforms**: returns
+///   [`OxiSoundError::UnsupportedConfig`].
 ///
 /// # Examples
 ///
@@ -867,15 +873,34 @@ pub fn configure_session(category: SessionCategory) -> Result<(), OxiSoundError>
     configure_session_impl(category)
 }
 
-#[cfg(any(target_os = "macos", target_os = "ios"))]
+// With the `session` feature: delegate to oxisound-session which has the real
+// AVAudioSession implementation (and is allowed to use unsafe for ObjC calls).
+#[cfg(feature = "session")]
 fn configure_session_impl(category: SessionCategory) -> Result<(), OxiSoundError> {
-    log::warn!(
-        "configure_session({category:?}): iOS/macOS platform implementation pending; returning Ok(())"
+    oxisound_session::configure_session(category)
+}
+
+// Without `session` feature on macOS: CoreAudio desktop doesn't need session management.
+#[cfg(all(target_os = "macos", not(feature = "session")))]
+fn configure_session_impl(category: SessionCategory) -> Result<(), OxiSoundError> {
+    log::debug!(
+        "configure_session({category:?}): macOS CoreAudio desktop — no AVAudioSession needed. \
+         Enable the `macos-session` feature for AVFoundation session management."
     );
     Ok(())
 }
 
-#[cfg(not(any(target_os = "macos", target_os = "ios")))]
+// Without `session` feature on iOS: not supported without the feature.
+#[cfg(all(target_os = "ios", not(feature = "session")))]
+fn configure_session_impl(category: SessionCategory) -> Result<(), OxiSoundError> {
+    let _ = category;
+    Err(OxiSoundError::UnsupportedConfig(
+        "configure_session on iOS requires the `macos-session` feature of oxisound".into(),
+    ))
+}
+
+// Without `session` feature on all other platforms.
+#[cfg(not(any(target_os = "macos", target_os = "ios", feature = "session")))]
 fn configure_session_impl(category: SessionCategory) -> Result<(), OxiSoundError> {
     let _ = category;
     Err(OxiSoundError::UnsupportedConfig(
@@ -883,11 +908,17 @@ fn configure_session_impl(category: SessionCategory) -> Result<(), OxiSoundError
     ))
 }
 
-/// Requests microphone access permission from the OS.
+/// Requests microphone recording permission from the OS.
 ///
-/// - On macOS: assumed granted (returns `Ok(true)`); actual AVFoundation prompt pending.
-/// - On iOS: assumed granted; actual platform prompt pending.
-/// - On all other platforms: returns `Err(OxiSoundError::PermissionDenied)`.
+/// - On **iOS / macOS with `macos-session` or `session` feature**: uses
+///   `AVAudioApplication.requestRecordPermissionWithCompletionHandler:`.
+///   Returns `Ok(true)` if granted, `Ok(false)` if denied, or
+///   [`OxiSoundError::Timeout`] if the user doesn't respond within 30 s.
+/// - On **macOS without the `session` feature**: returns `Ok(true)` (assumed
+///   granted; CoreAudio desktop doesn't require a permission prompt in most
+///   configurations).
+/// - On **all other platforms**: returns
+///   `Err(`[`OxiSoundError::PermissionDenied`]`)`.
 ///
 /// # Examples
 ///
@@ -898,16 +929,35 @@ pub fn request_microphone_permission() -> Result<bool, OxiSoundError> {
     request_microphone_permission_impl()
 }
 
-#[cfg(any(target_os = "macos", target_os = "ios"))]
+// With the `session` feature: delegate to oxisound-session.
+#[cfg(feature = "session")]
 fn request_microphone_permission_impl() -> Result<bool, OxiSoundError> {
-    log::warn!("request_microphone_permission: platform implementation pending; assuming granted");
+    oxisound_session::request_microphone_permission()
+}
+
+// Without `session` feature on macOS: assume granted for CoreAudio desktop.
+#[cfg(all(target_os = "macos", not(feature = "session")))]
+fn request_microphone_permission_impl() -> Result<bool, OxiSoundError> {
+    log::debug!(
+        "request_microphone_permission: macOS CoreAudio desktop — assumed granted. \
+         Enable `macos-session` for real TCC permission check."
+    );
     Ok(true)
 }
 
-#[cfg(not(any(target_os = "macos", target_os = "ios")))]
+// Without `session` feature on iOS: not supported.
+#[cfg(all(target_os = "ios", not(feature = "session")))]
 fn request_microphone_permission_impl() -> Result<bool, OxiSoundError> {
     Err(OxiSoundError::PermissionDenied(
-        "microphone permission prompt is not implemented on this platform".into(),
+        "request_microphone_permission on iOS requires the `macos-session` feature".into(),
+    ))
+}
+
+// Without `session` feature on all other platforms.
+#[cfg(not(any(target_os = "macos", target_os = "ios", feature = "session")))]
+fn request_microphone_permission_impl() -> Result<bool, OxiSoundError> {
+    Err(OxiSoundError::PermissionDenied(
+        "microphone permission prompt is not available on this platform".into(),
     ))
 }
 

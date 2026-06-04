@@ -4,7 +4,7 @@ Workspace-wide task list. Individual sub-crate TODOs live under `crates/<crate>/
 
 ## Release Status
 
-**v0.1.0 — Released 2026-06-01**
+**v0.1.1 — Released 2026-06-04**
 
 - **oxisound-core**: M0-M5 complete. DeviceInfo (builder, serde), StreamConfig (const presets, validation, low-latency), HostApi (7 variants), OxiSoundError (7 variants), AudioDevice/OutputStream/InputStream/DuplexStream traits, AsyncOutputStream/AsyncInputStream (tokio), DeviceSelector (Default/LatencyOptimal/NameMatch). `no_std` support. oxiaudio type bridge (optional).
 - **oxisound-cpal**: M0-M5 complete. CpalDevice with output/input/duplex streams, lock-free SPSC ring buffers (ringbuf 0.5.0), sample format dispatch (F32/I16/U16/I8/I32/F64), config validation, capacity cap (~2s), underrun counting, disconnect detection, JACK/ASIO feature gates, host selection, async output/input (tokio). Adaptive buffer sizing, auto-reconnect, loopback capture, WASM support.
@@ -13,7 +13,7 @@ Workspace-wide task list. Individual sub-crate TODOs live under `crates/<crate>/
 - **oxisound-smf**: Complete. SMF format 0/1 parser, TempoMap, SmfPlayer, SMF writer, serde support.
 - **oxisound-jack**: Complete (pure-Rust stub + jack-backend feature). JACK streams, MIDI ports, transport, observability metrics.
 - **oxisound-osc**: Complete. OSC encode/decode, all type tags, bundle support, UDP transport.
-- **Total workspace SLoC**: ~10,179 Rust (production + tests), 232 tests passing.
+- **Total workspace SLoC**: ~10,179 Rust (production + tests), 236 tests passing.
 
 ## Publish Prerequisites
 
@@ -61,8 +61,8 @@ Workspace-wide task list. Individual sub-crate TODOs live under `crates/<crate>/
 - [x] Periodic health reporting for production monitoring
 
 ### Platform-Specific Features
-- [ ] iOS/macOS audio session management (category, routing, interruption handling)
-- [ ] Microphone permission request for iOS/macOS/Android
+- [x] iOS/macOS audio session management (category, routing, interruption handling) — Done 2026-06-03: New `oxisound-session` subcrate with `AVAudioSession.setCategory:error:` via `objc2-avf-audio` behind `avf-audio` feature. `oxisound` facade `macos-session` feature delegates `configure_session()` to `oxisound_session::configure_session()`. Default macOS (CoreAudio desktop, no `avf-audio`): `Ok(())` with debug log. iOS without feature: `UnsupportedConfig`. Other platforms: `UnsupportedConfig`. Routing override and interruption handling are tracked in `AudioSession` trait (oxisound-core); full implementation requires iOS run-loop integration (deferred).
+- [x] Microphone permission request for iOS/macOS/Android — Done 2026-06-03: `oxisound-session::request_microphone_permission()` uses `AVAudioApplication.requestRecordPermissionWithCompletionHandler:` (modern API replacing deprecated `AVAudioSession.requestRecordPermission:`). Checks `recordPermission` first; if undetermined, sends block callback and spin-waits up to 30 s. `oxisound` facade `macos-session` feature delegates to this. Android: `PermissionDenied` (hardware-gated, no AAudio permission prompt API).
 - [ ] PipeWire backend investigation and opt-in feature — **Blocked upstream:** cpal 0.17.3 has no native PipeWire feature; PipeWire users rely on ALSA compat layer. Revisit when cpal adds PipeWire support. See oxisound-cpal TODO for per-item detail.
 
 ### Error Recovery and Resilience

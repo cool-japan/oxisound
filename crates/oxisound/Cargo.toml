@@ -22,6 +22,11 @@ oxiaudio = ["pure", "oxisound-core/oxiaudio"]
 wasm = ["pure", "oxisound-cpal/wasm"]
 jack-native = ["dep:oxisound-jack", "oxisound-jack/jack-backend"]
 osc = ["dep:oxisound-osc"]
+# Enables the real AVAudioSession implementation on iOS / macOS via objc2-avf-audio.
+# On all other platforms this feature is a no-op (stubs return appropriate errors).
+session = ["dep:oxisound-session"]
+# Convenience alias: macos-session enables the AVFoundation backend on Apple platforms.
+macos-session = ["session", "oxisound-session/avf-audio"]
 
 [dependencies]
 oxisound-core = { workspace = true }
@@ -30,17 +35,19 @@ oxisound-midi = { workspace = true, optional = true }
 oxisound-smf = { workspace = true, optional = true }
 oxisound-jack = { workspace = true, optional = true }
 oxisound-osc = { workspace = true, optional = true }
+oxisound-session = { workspace = true, optional = true }
 futures-core = { workspace = true, optional = true }
 tokio-stream = { workspace = true, optional = true }
 log = { workspace = true }
 
 [dev-dependencies]
-oxisound-core = { workspace = true }
+oxisound-core = { path = "../oxisound-core" }
 oxiaudio = { workspace = true }
-oxisound-smf = { workspace = true }
+oxisound-smf = { path = "../oxisound-smf" }
 tokio = { workspace = true, features = ["macros", "time", "rt", "net", "sync"] }
 tokio-tungstenite = { workspace = true }
 futures-util = { workspace = true }
+criterion = { workspace = true }
 
 [[example]]
 name = "decode_play"
@@ -69,3 +76,7 @@ required-features = ["smf", "midi"]
 [[example]]
 name = "smf_synth"
 required-features = ["smf"]
+
+[[bench]]
+name = "facade"
+harness = false

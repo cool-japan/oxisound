@@ -8,10 +8,11 @@ members = [
     "crates/oxisound-jack",
     "crates/oxisound-smf",
     "crates/oxisound-osc",
+    "crates/oxisound-session",
 ]
 
 [workspace.package]
-version = "0.1.0"
+version = "0.1.1"
 edition = "2024"
 rust-version = "1.89"
 authors = ["COOLJAPAN OU (Team Kitasan)"]
@@ -20,17 +21,18 @@ repository = "https://github.com/cool-japan/oxisound"
 description = "OxiSound is the COOLJAPAN Pure-Rust audio device I/O layer."
 
 [workspace.dependencies]
-oxisound-core = { path = "crates/oxisound-core", version = "0.1.0" }
-oxisound-cpal = { path = "crates/oxisound-cpal", version = "0.1.0" }
-oxisound-midi = { path = "crates/oxisound-midi", version = "0.1.0" }
-oxisound-jack = { path = "crates/oxisound-jack", version = "0.1.0" }
-oxisound-smf = { path = "crates/oxisound-smf", version = "0.1.0" }
-oxisound-osc = { path = "crates/oxisound-osc", version = "0.1.0" }
+oxisound-core = { path = "crates/oxisound-core", version = "0.1.1" }
+oxisound-cpal = { path = "crates/oxisound-cpal", version = "0.1.1" }
+oxisound-midi = { path = "crates/oxisound-midi", version = "0.1.1" }
+oxisound-jack = { path = "crates/oxisound-jack", version = "0.1.1" }
+oxisound-smf = { path = "crates/oxisound-smf", version = "0.1.1" }
+oxisound-osc = { path = "crates/oxisound-osc", version = "0.1.1" }
+oxisound-session = { path = "crates/oxisound-session", version = "0.1.1" }
 # Note: the `jack` crate (C-FFI/libjack2) is NOT a workspace dependency because
 # workspace dependencies cannot be optional. It is declared directly in
 # crates/oxisound-jack/Cargo.toml behind the `jack-backend` feature gate.
-oxiaudio-core = { version = "0.1.0" }
-oxiaudio = { version = "0.1.0" }
+oxiaudio-core = { version = "0.1.1" }
+oxiaudio = { version = "0.1.1" }
 midir = "0.11.0"
 thiserror = { version = "2.0.18" }
 # IMPORTANT: cpal backends (ALSA/CoreAudio/WASAPI) are auto-selected by cfg(target_os).

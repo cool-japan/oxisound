@@ -70,8 +70,8 @@ Public facade exposing COOLJAPAN audio device I/O API. Re-exports all oxisound-c
 - [x] Test async output stream with tokio runtime: write 100ms of silence asynchronously (~15 SLOC)
 
 ## Performance
-- [ ] Profile `sine_test_tone` generation: ensure no unnecessary allocation beyond the output Vec (~analysis)
-- [ ] Profile facade function overhead: measure time in `default_output()` + `open_output()` call chain (~analysis)
+- [x] Profile `sine_test_tone` generation: ensure no unnecessary allocation beyond the output Vec (~analysis) — Done 2026-06-03: Criterion benchmark added at `crates/oxisound/benches/facade.rs` (`bench_sine_test_tone`, `bench_sine_test_tone_frequencies`). Analysis: `sine_test_tone` performs exactly one allocation (the output `Vec::with_capacity`); no per-sample allocations. Run `cargo bench -p oxisound --bench facade`.
+- [x] Profile facade function overhead: measure time in `default_output()` + `open_output()` call chain (~analysis) — Done 2026-06-03: Criterion benchmarks `bench_default_output` and `bench_open_output` in `crates/oxisound/benches/facade.rs`; skipped gracefully when no audio hardware is present. Run `cargo bench -p oxisound --bench facade`.
 - [x] Benchmark `format_devices` with 100+ mock devices to verify O(n) behavior (~10 SLOC)
 
 ## Integration
