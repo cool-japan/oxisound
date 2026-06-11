@@ -23,10 +23,10 @@ log = { workspace = true }
 thiserror = { workspace = true }
 
 [target.'cfg(any(target_os = "ios", target_os = "macos"))'.dependencies]
-objc2 = { version = "0.6.4", optional = true }
-objc2-foundation = { version = "0.3.2", optional = true }
+objc2 = { workspace = true, optional = true }
+objc2-foundation = { workspace = true, optional = true }
 # AVAudioApplication: modern permission API (replaces deprecated AVAudioSession.requestRecordPermission:)
-objc2-avf-audio = { version = "0.3.2", optional = true, features = [
+objc2-avf-audio = { workspace = true, optional = true, features = [
     "AVAudioSession",
     "AVAudioSessionTypes",
     "AVAudioApplication",
@@ -34,6 +34,6 @@ objc2-avf-audio = { version = "0.3.2", optional = true, features = [
 ] }
 # block2 is needed for the completion-handler block type passed to
 # requestRecordPermissionWithCompletionHandler:
-block2 = { version = "0.6.2", optional = true }
+block2 = { workspace = true, optional = true }
 
 [dev-dependencies]

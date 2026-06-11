@@ -4,6 +4,8 @@ Workspace-wide task list. Individual sub-crate TODOs live under `crates/<crate>/
 
 ## Release Status
 
+**v0.1.2 — Released 2026-06-10**
+
 **v0.1.1 — Released 2026-06-04**
 
 - **oxisound-core**: M0-M5 complete. DeviceInfo (builder, serde), StreamConfig (const presets, validation, low-latency), HostApi (7 variants), OxiSoundError (7 variants), AudioDevice/OutputStream/InputStream/DuplexStream traits, AsyncOutputStream/AsyncInputStream (tokio), DeviceSelector (Default/LatencyOptimal/NameMatch). `no_std` support. oxiaudio type bridge (optional).
@@ -13,7 +15,7 @@ Workspace-wide task list. Individual sub-crate TODOs live under `crates/<crate>/
 - **oxisound-smf**: Complete. SMF format 0/1 parser, TempoMap, SmfPlayer, SMF writer, serde support.
 - **oxisound-jack**: Complete (pure-Rust stub + jack-backend feature). JACK streams, MIDI ports, transport, observability metrics.
 - **oxisound-osc**: Complete. OSC encode/decode, all type tags, bundle support, UDP transport.
-- **Total workspace SLoC**: ~10,179 Rust (production + tests), 236 tests passing.
+- **Total workspace SLoC**: ~10,179 Rust (production + tests), 235 tests passing.
 
 ## Publish Prerequisites
 

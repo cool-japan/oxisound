@@ -12,16 +12,16 @@ The crate is `#![forbid(unsafe_code)]` at the facade layer. **Pure-Rust status d
 ```toml
 [dependencies]
 # Default: Pure-Rust cpal backend
-oxisound = "0.1.0"
+oxisound = "0.1.2"
 
 # Async streaming (tokio) + Pure-Rust playback
-oxisound = { version = "0.1.0", features = ["tokio"] }
+oxisound = { version = "0.1.2", features = ["tokio"] }
 
 # Add live MIDI + Standard MIDI File playback
-oxisound = { version = "0.1.0", features = ["midi", "smf"] }
+oxisound = { version = "0.1.2", features = ["midi", "smf"] }
 
 # Add Open Sound Control
-oxisound = { version = "0.1.0", features = ["osc"] }
+oxisound = { version = "0.1.2", features = ["osc"] }
 ```
 
 ## Quick Start
@@ -65,6 +65,8 @@ print!("{}", oxisound::format_devices(&devices));
 | `midi` | — | ✓ | `oxisound-midi` | Live MIDI device I/O: `enumerate_midi_devices`, `open_midi_input`, `open_midi_output` |
 | `smf` | — | ✓ | `oxisound-smf` | Standard MIDI File read/play: `load_smf`, SMF re-exports (`SmfFile`, `SmfPlayer`, …) |
 | `osc` | — | ✓ | `oxisound-osc` | Open Sound Control: `encode_osc`/`decode_osc`, `OscSender`, `OscReceiver`, OSC types |
+| `session` | — | ✓ | `oxisound-session` | Audio session management (`configure_session`, `request_microphone_permission`); real impl on Apple, stubs elsewhere |
+| `macos-session` | — | ✗ | `oxisound-session/avf-audio` | `session` + AVFoundation Obj-C FFI on iOS/macOS |
 | `oxiaudio` | — | ✓ | `oxisound-core/oxiaudio` | OxiAudio integration in `oxisound-core` (implies `pure`) |
 | `wasm` | — | ✓ | `oxisound-cpal/wasm` | WebAudio backend for `wasm32` targets (implies `pure`) |
 | `jack` | — | ✗ | `oxisound-cpal/jack` | cpal's JACK host (`jack_output`); requires `libjack2` |
@@ -194,6 +196,7 @@ Backend-specific re-exports appear under their features: `CpalDevice`, `CpalOutp
 - [`oxisound-midi`](../oxisound-midi) — live MIDI device I/O (`midi`)
 - [`oxisound-smf`](../oxisound-smf) — Standard MIDI File reader/writer/player (`smf`)
 - [`oxisound-osc`](../oxisound-osc) — Open Sound Control codec and UDP transport (`osc`)
+- [`oxisound-session`](../oxisound-session) — iOS/macOS audio session management (`session`, `macos-session`)
 
 ## License
 

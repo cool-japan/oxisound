@@ -11,15 +11,15 @@ The crate is **Pure Rust** and `no_std`-capable. Its only required dependency is
 
 ```toml
 [dependencies]
-oxisound-core = "0.1.0"
+oxisound-core = "0.1.2"
 ```
 
 ```toml
 # no_std build (core + alloc), no std::io::Error variant
-oxisound-core = { version = "0.1.0", default-features = false }
+oxisound-core = { version = "0.1.2", default-features = false }
 
 # async stream traits + serde derives
-oxisound-core = { version = "0.1.0", features = ["tokio", "serde"] }
+oxisound-core = { version = "0.1.2", features = ["tokio", "serde"] }
 ```
 
 ## Quick Start

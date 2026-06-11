@@ -7,6 +7,23 @@ OxiSound adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-06-10
+
+### Added
+
+#### oxisound-session
+- Added `README.md` with full API overview, platform behaviour matrix, and feature flag documentation
+
+### Changed
+
+#### Workspace / dependency hygiene
+- Moved `jack`, `objc2`, `objc2-foundation`, `objc2-avf-audio`, and `block2` to workspace `[dependencies]` so all subcrates use a consistent pinned version
+- `oxisound-jack`: migrated `jack` dep to `workspace = true` (was a direct version pin)
+- `oxisound-session`: migrated `objc2`, `objc2-foundation`, `objc2-avf-audio`, `block2` deps to `workspace = true`
+
+### Dependencies updated (workspace)
+- `jack` 0.13.5, `objc2` 0.6.4, `objc2-foundation` 0.3.2, `objc2-avf-audio` 0.3.2, `block2` 0.6.2 pinned in `[workspace.dependencies]`
+
 ## [0.1.1] - 2026-06-04
 
 ### Added
@@ -135,4 +152,5 @@ OxiSound adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 [0.1.0]: https://github.com/cool-japan/oxisound/releases/tag/v0.1.0
 [0.1.1]: https://github.com/cool-japan/oxisound/releases/tag/v0.1.1
-[Unreleased]: https://github.com/cool-japan/oxisound/compare/v0.1.1...HEAD
+[0.1.2]: https://github.com/cool-japan/oxisound/releases/tag/v0.1.2
+[Unreleased]: https://github.com/cool-japan/oxisound/compare/v0.1.2...HEAD

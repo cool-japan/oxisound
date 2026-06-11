@@ -2,7 +2,7 @@
 
 **OxiSound is the COOLJAPAN Pure-Rust audio device I/O layer.**
 
-Version: **0.1.1** — Released 2026-06-04
+Version: **0.1.2** — Released 2026-06-10
 
 [![Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 [![Rust 1.89+](https://img.shields.io/badge/rustc-1.89%2B-orange.svg)](https://releases.rs/docs/1.89.0/)
@@ -18,13 +18,14 @@ and PipeWire support via optional subcrates.
 ```
 oxisound/
 ├── crates/
-│   ├── oxisound-core/   # Core traits: AudioDevice, OutputStream, InputStream; types; no_std support
-│   ├── oxisound-cpal/   # cpal-backed implementation (ALSA/CoreAudio/WASAPI auto-selected by OS)
-│   ├── oxisound-midi/   # MIDI I/O via midir (CoreMIDI/WinMM/ALSA sequencer)
-│   ├── oxisound-smf/    # Standard MIDI File (SMF) parser + writer + playback iterator
-│   ├── oxisound-jack/   # JACK audio server client (opt-in: jack-backend feature)
-│   ├── oxisound-osc/    # Open Sound Control (OSC) encode/decode + UDP transport
-│   └── oxisound/        # Public facade (default = ["pure"])
+│   ├── oxisound-core/     # Core traits: AudioDevice, OutputStream, InputStream; types; no_std support
+│   ├── oxisound-cpal/     # cpal-backed implementation (ALSA/CoreAudio/WASAPI auto-selected by OS)
+│   ├── oxisound-midi/     # MIDI I/O via midir (CoreMIDI/WinMM/ALSA sequencer)
+│   ├── oxisound-smf/      # Standard MIDI File (SMF) parser + writer + playback iterator
+│   ├── oxisound-jack/     # JACK audio server client (opt-in: jack-backend feature)
+│   ├── oxisound-osc/      # Open Sound Control (OSC) encode/decode + UDP transport
+│   ├── oxisound-session/  # iOS/macOS audio session management (AVAudioSession; opt-in: avf-audio)
+│   └── oxisound/          # Public facade (default = ["pure"])
 ├── deny.toml
 ├── Dockerfile.ffi-audit
 └── scripts/ffi-audit.sh
@@ -49,7 +50,7 @@ There are NO alsa/coreaudio/wasapi Cargo features — do NOT add them.
 
 ```toml
 [dependencies]
-oxisound = "0.1.1"
+oxisound = "0.1.2"
 ```
 
 ```rust
@@ -61,18 +62,19 @@ stream.stop()?;
 
 ## Feature Flags
 
-| Feature          | Description                                             | Default |
-|------------------|---------------------------------------------------------|---------|
-| `pure`           | cpal backend (ALSA/CoreAudio/WASAPI)                    | ✅      |
-| `tokio`          | Async output/input streams, device event subscriptions  |         |
-| `midi`           | MIDI I/O via `oxisound-midi`                            |         |
-| `smf`            | SMF parser/writer/player via `oxisound-smf`             |         |
-| `osc`            | OSC encode/decode/UDP via `oxisound-osc`                |         |
-| `jack-native`    | JACK audio server client via `oxisound-jack`            |         |
-| `pipewire-backend` | PipeWire native client (Linux only)                   |         |
-| `wasm`           | WebAudio backend for `wasm32-unknown-unknown`           |         |
-| `asio`           | ASIO backend (Windows only)                             |         |
-| `oxiaudio`       | Type bridge with `oxiaudio-core` (`SampleFormat` etc.)  |         |
+| Feature          | Description                                                       | Default |
+|------------------|-------------------------------------------------------------------|---------|
+| `pure`           | cpal backend (ALSA/CoreAudio/WASAPI)                              | ✅      |
+| `tokio`          | Async output/input streams, device event subscriptions            |         |
+| `midi`           | MIDI I/O via `oxisound-midi`                                      |         |
+| `smf`            | SMF parser/writer/player via `oxisound-smf`                       |         |
+| `osc`            | OSC encode/decode/UDP via `oxisound-osc`                          |         |
+| `jack-native`    | JACK audio server client via `oxisound-jack`                      |         |
+| `session`        | Audio session management via `oxisound-session` (stub on non-Apple)|         |
+| `macos-session`  | `session` + AVFoundation backend (`avf-audio`) on macOS/iOS       |         |
+| `wasm`           | WebAudio backend for `wasm32-unknown-unknown`                     |         |
+| `asio`           | ASIO backend (Windows only)                                       |         |
+| `oxiaudio`       | Type bridge with `oxiaudio-core` (`SampleFormat` etc.)            |         |
 
 ## API Surface (oxisound facade)
 
@@ -197,26 +199,24 @@ println!("CPU load: {:.1}%", stream.cpu_load() * 100.0);
 
 | Item | Reason |
 |------|--------|
-| iOS/macOS audio session management | Requires platform-specific Metal/AVFoundation FFI |
-| Microphone permission API | Platform permission dialog; no cpal abstraction |
 | PipeWire backend (non-Linux) | PipeWire is Linux-only by design |
 | Android device testing | Requires NDK cross-compilation + hardware |
 | JACK freewheel mode | `set_freewheel` not yet implemented in `jack 0.13.5` |
-| `oxisound-core` + downstream publish | Blocked on `oxiaudio-core` crates.io publication; only `oxisound-osc` is independently publishable today |
+| iOS interruption handling | Full AVAudioSession interruption run-loop requires iOS runtime integration |
 
 ## Test Results
 
-**236 tests — 236 passed, 0 failed** (as of 2026-06-04)
+**235 tests — 235 passed, 0 failed** (as of 2026-06-10)
 
 ```
-oxisound-core:   100+ tests
-oxisound-cpal:    80+ tests (including hardware integration tests)
-oxisound-midi:    14 tests
-oxisound-smf:     16 tests
-oxisound-jack:    17 tests (midi_util + metrics; hardware tests #[ignore])
-oxisound-osc:      6 tests
-oxisound-session:  3 tests
-oxisound:          5 tests
+oxisound-core:    81 tests
+oxisound-cpal:    56 tests (hardware integration tests #[ignore])
+oxisound-midi:    15 tests
+oxisound-smf:     22 tests
+oxisound-jack:    20 tests (midi_util + metrics; hardware tests #[ignore])
+oxisound-osc:     12 tests
+oxisound-session:  4 tests
+oxisound:         25 tests
 ```
 
 ## License

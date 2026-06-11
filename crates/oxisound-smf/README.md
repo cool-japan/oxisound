@@ -11,17 +11,17 @@ Within the OxiSound ecosystem this crate is the offline song-data layer. It comp
 
 ```toml
 [dependencies]
-oxisound-smf = "0.1.0"
+oxisound-smf = "0.1.2"
 ```
 
 Feature variants:
 
 ```toml
 # no_std (parser/writer only — no real-time playback)
-oxisound-smf = { version = "0.1.0", default-features = false }
+oxisound-smf = { version = "0.1.2", default-features = false }
 
 # Enable serde derives on all data types
-oxisound-smf = { version = "0.1.0", features = ["serde"] }
+oxisound-smf = { version = "0.1.2", features = ["serde"] }
 ```
 
 ## Quick Start

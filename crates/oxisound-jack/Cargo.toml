@@ -20,6 +20,6 @@ jack-backend = ["dep:jack"]
 oxisound-core = { workspace = true }
 log = { workspace = true }
 ringbuf = { workspace = true }
-jack = { version = "0.13.5", optional = true }
+jack = { workspace = true, optional = true }
 
 [dev-dependencies]
