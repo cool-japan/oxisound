@@ -4,6 +4,8 @@ Workspace-wide task list. Individual sub-crate TODOs live under `crates/<crate>/
 
 ## Release Status
 
+**v0.1.3 — Released 2026-06-19**
+
 **v0.1.2 — Released 2026-06-10**
 
 **v0.1.1 — Released 2026-06-04**

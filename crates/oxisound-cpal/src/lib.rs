@@ -6,7 +6,7 @@
 //! Enable the `wasm` feature to target `wasm32-unknown-unknown` via cpal's WebAudio backend:
 //!
 //! ```toml
-//! oxisound-cpal = { version = "0.1.2", features = ["wasm"] }
+//! oxisound-cpal = { version = "0.1.3", features = ["wasm"] }
 //! ```
 //!
 //! **GOVERNANCE note (COOLJAPAN policy):** The Web Audio API is classified as an OS-boundary

@@ -11,7 +11,7 @@
 
 ```toml
 [dependencies]
-oxisound-midi = "0.1.2"
+oxisound-midi = "0.1.3"
 ```
 
 This crate has no Cargo features; the platform MIDI backend is selected automatically at compile time.

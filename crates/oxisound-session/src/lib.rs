@@ -31,11 +31,11 @@
 //! println!("microphone granted: {granted}");
 //! ```
 
-use oxisound_core::{OxiSoundError, SessionCategory};
+use oxisound_core::OxiSoundError;
 
 // ── Re-exports ────────────────────────────────────────────────────────────────
 
-pub use oxisound_core::{AudioSession, SessionInterruptionEvent};
+pub use oxisound_core::{AudioSession, SessionCategory, SessionInterruptionEvent};
 
 // ── Platform implementations ──────────────────────────────────────────────────
 

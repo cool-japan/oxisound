@@ -11,15 +11,15 @@
 
 ```toml
 [dependencies]
-oxisound-cpal = "0.1.2"
+oxisound-cpal = "0.1.3"
 ```
 
 ```toml
 # async output/input stream wrappers (requires a tokio runtime; sync + rt features)
-oxisound-cpal = { version = "0.1.2", features = ["tokio"] }
+oxisound-cpal = { version = "0.1.3", features = ["tokio"] }
 
 # WebAudio backend for wasm32-unknown-unknown
-oxisound-cpal = { version = "0.1.2", features = ["wasm"] }
+oxisound-cpal = { version = "0.1.3", features = ["wasm"] }
 ```
 
 ## Quick Start

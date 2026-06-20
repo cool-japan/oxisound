@@ -12,12 +12,12 @@
 ```toml
 [dependencies]
 # Pure-Rust stub (default): all JackDevice constructors return Unsupported.
-oxisound-jack = "0.1.2"
+oxisound-jack = "0.1.3"
 ```
 
 ```toml
 # Real JACK client — links libjack2 (must be installed: Linux/macOS).
-oxisound-jack = { version = "0.1.2", features = ["jack-backend"] }
+oxisound-jack = { version = "0.1.3", features = ["jack-backend"] }
 ```
 
 ## Quick Start

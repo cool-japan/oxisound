@@ -5,7 +5,10 @@ All notable changes to the OxiSound workspace are documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 OxiSound adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.1.3] - 2026-06-19
+
+### Changed
+- Workspace version bumped from 0.1.2 to 0.1.3; all subcrate dependency pins updated accordingly (`oxisound-core`, `oxisound-cpal`, `oxisound-midi`, `oxisound-jack`, `oxisound-smf`, `oxisound-osc`, `oxisound-session`)
 
 ## [0.1.2] - 2026-06-10
 
@@ -153,4 +156,4 @@ OxiSound adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 [0.1.0]: https://github.com/cool-japan/oxisound/releases/tag/v0.1.0
 [0.1.1]: https://github.com/cool-japan/oxisound/releases/tag/v0.1.1
 [0.1.2]: https://github.com/cool-japan/oxisound/releases/tag/v0.1.2
-[Unreleased]: https://github.com/cool-japan/oxisound/compare/v0.1.2...HEAD
+[0.1.3]: https://github.com/cool-japan/oxisound/releases/tag/v0.1.3
