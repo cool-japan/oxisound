@@ -11,15 +11,15 @@
 
 ```toml
 [dependencies]
-oxisound-cpal = "0.1.3"
+oxisound-cpal = "0.2.0"
 ```
 
 ```toml
 # async output/input stream wrappers (requires a tokio runtime; sync + rt features)
-oxisound-cpal = { version = "0.1.3", features = ["tokio"] }
+oxisound-cpal = { version = "0.2.0", features = ["tokio"] }
 
 # WebAudio backend for wasm32-unknown-unknown
-oxisound-cpal = { version = "0.1.3", features = ["wasm"] }
+oxisound-cpal = { version = "0.2.0", features = ["wasm"] }
 ```
 
 ## Quick Start
@@ -179,10 +179,10 @@ Paired input + output ring buffers (implements `DuplexStream`), with clock-drift
 
 | Feature | Description |
 |---------|-------------|
-| `jack` | Enables CPAL's JACK host (`cpal/jack`) on Linux/macOS — links libjack |
-| `asio` | Enables CPAL's ASIO host (`cpal/asio`) on Windows — requires the ASIO SDK |
 | `wasm` | Enables CPAL's WebAudio backend (`cpal/wasm-bindgen`) for `wasm32-unknown-unknown` |
 | `tokio` | Async output/input stream wrappers; pulls in `tokio` (sync + rt) and `futures-core`; implies `oxisound-core/tokio` |
+
+> **`jack` and `asio` features removed in 0.2.0.** These forwarded C-FFI dependencies in violation of COOLJAPAN Pure Rust Policy v2 §5. Use `oxisound-jack` with `jack-backend` for JACK support. `HostApi::Jack` and `HostApi::Asio` now return `OxiSoundError::UnsupportedConfig` from this crate.
 
 > **wasm32 caveats.** The `tokio` feature is incompatible with wasm32 (enabling both is a compile error — use `wasm` instead). On wasm32 there are no OS threads, so automatic recovery and hot-plug detection (`enable_auto_reconnect`, `watch_devices`, `on_device_change`) are not compiled in, and `std::time::Instant::now()` panics without a `web-time` shim.
 >

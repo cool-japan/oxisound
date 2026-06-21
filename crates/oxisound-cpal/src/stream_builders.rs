@@ -54,7 +54,7 @@ where
     let mut f32_buf: Vec<f32> = Vec::new();
     device
         .build_output_stream(
-            config,
+            *config,
             move |data: &mut [T], _: &cpal::OutputCallbackInfo| {
                 #[cfg(not(target_arch = "wasm32"))]
                 let cb_start = std::time::Instant::now();
@@ -90,16 +90,19 @@ where
                 cb_dur.store(cb_start.elapsed().as_nanos() as u64, Ordering::Relaxed);
             },
             move |err| {
-                use cpal::StreamError;
-                match err {
-                    StreamError::DeviceNotAvailable
-                    | StreamError::StreamInvalidated
-                    | StreamError::BackendSpecific { .. } => {
+                use cpal::ErrorKind;
+                match err.kind() {
+                    ErrorKind::DeviceNotAvailable
+                    | ErrorKind::StreamInvalidated
+                    | ErrorKind::BackendError => {
                         disc_cb.store(true, Ordering::Relaxed);
                         log::error!("[oxisound-cpal] output stream error: {err}");
                     }
-                    StreamError::BufferUnderrun => {
+                    ErrorKind::Xrun => {
                         log::warn!("[oxisound-cpal] output buffer underrun reported by driver");
+                    }
+                    _ => {
+                        log::error!("[oxisound-cpal] output stream error: {err}");
                     }
                 }
             },
@@ -132,7 +135,7 @@ where
     let ch = channels.max(1) as usize;
     device
         .build_input_stream(
-            config,
+            *config,
             move |data: &[T], _: &cpal::InputCallbackInfo| {
                 #[cfg(not(target_arch = "wasm32"))]
                 let cb_start = std::time::Instant::now();
@@ -148,16 +151,19 @@ where
                 cb_dur.store(cb_start.elapsed().as_nanos() as u64, Ordering::Relaxed);
             },
             move |err| {
-                use cpal::StreamError;
-                match err {
-                    StreamError::DeviceNotAvailable
-                    | StreamError::StreamInvalidated
-                    | StreamError::BackendSpecific { .. } => {
+                use cpal::ErrorKind;
+                match err.kind() {
+                    ErrorKind::DeviceNotAvailable
+                    | ErrorKind::StreamInvalidated
+                    | ErrorKind::BackendError => {
                         disc_cb.store(true, Ordering::Relaxed);
                         log::error!("[oxisound-cpal] input stream error: {err}");
                     }
-                    StreamError::BufferUnderrun => {
+                    ErrorKind::Xrun => {
                         log::warn!("[oxisound-cpal] input buffer underrun reported by driver");
+                    }
+                    _ => {
+                        log::error!("[oxisound-cpal] input stream error: {err}");
                     }
                 }
             },

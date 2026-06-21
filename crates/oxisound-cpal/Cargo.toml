@@ -11,8 +11,11 @@ categories = ["multimedia::audio"]
 keywords = ["audio", "cpal", "device", "playback", "cooljapan"]
 
 [features]
-jack = ["cpal/jack"]
-asio = ["cpal/asio"]
+# NOTE (Pure Rust Policy v2 §5): a pure adapter crate may NOT feature-gate FFI.
+# The former `jack` (cpal/jack → libjack2) and `asio` (cpal/asio → ASIO SDK) features
+# are removed; JACK lives only in the `oxisound-jack` quarantine crate. cpal's default
+# OS backends (ALSA/CoreAudio/WASAPI) are auto-selected by cfg(target_os) and are
+# allowlisted (§4) — do NOT add features for them.
 # tokio: async output/input stream wrappers.
 # Requires tokio runtime with sync+rt features.
 tokio = ["dep:tokio", "dep:futures-core", "oxisound-core/tokio"]

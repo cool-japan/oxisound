@@ -5,47 +5,52 @@
 
 use oxisound_core::{OxiSoundError, SampleFormat as CoreSampleFormat};
 
-pub(crate) fn map_build_stream_err(e: cpal::BuildStreamError) -> OxiSoundError {
-    match e {
-        cpal::BuildStreamError::DeviceNotAvailable => {
-            OxiSoundError::Disconnected("build stream: device not available".into())
+/// Maps a cpal [`Error`](cpal::Error) to the closest [`OxiSoundError`].
+///
+/// As of cpal 0.18 every fallible operation reports the unified [`cpal::Error`]
+/// carrying an [`ErrorKind`](cpal::ErrorKind), replacing the per-operation error
+/// enums (`BuildStreamError`, `PlayStreamError`, `DevicesError`, …) used by
+/// earlier releases. `context` becomes the human-readable prefix, and
+/// `fallback` builds the error for kinds without a more specific mapping.
+fn map_cpal_err(
+    e: cpal::Error,
+    context: &str,
+    fallback: fn(String) -> OxiSoundError,
+) -> OxiSoundError {
+    use cpal::ErrorKind;
+    let detail = format!("{context}: {e}");
+    match e.kind() {
+        ErrorKind::DeviceNotAvailable | ErrorKind::StreamInvalidated => {
+            OxiSoundError::Disconnected(detail)
         }
-        cpal::BuildStreamError::InvalidArgument => {
-            OxiSoundError::UnsupportedConfig("build stream: invalid argument".into())
+        ErrorKind::PermissionDenied => OxiSoundError::PermissionDenied(detail),
+        ErrorKind::InvalidInput | ErrorKind::UnsupportedConfig => {
+            OxiSoundError::UnsupportedConfig(detail)
         }
-        _ => OxiSoundError::Stream(e.to_string()),
+        ErrorKind::UnsupportedOperation => OxiSoundError::Unsupported(detail),
+        ErrorKind::Xrun => OxiSoundError::Underrun(detail),
+        _ => fallback(detail),
     }
 }
 
-pub(crate) fn map_play_stream_err(e: cpal::PlayStreamError) -> OxiSoundError {
-    match e {
-        cpal::PlayStreamError::DeviceNotAvailable => {
-            OxiSoundError::Disconnected("play stream: device not available".into())
-        }
-        _ => OxiSoundError::Stream(e.to_string()),
-    }
+pub(crate) fn map_build_stream_err(e: cpal::Error) -> OxiSoundError {
+    map_cpal_err(e, "build stream", OxiSoundError::Stream)
 }
 
-pub(crate) fn map_devices_err(e: cpal::DevicesError) -> OxiSoundError {
-    OxiSoundError::Device(e.to_string())
+pub(crate) fn map_play_stream_err(e: cpal::Error) -> OxiSoundError {
+    map_cpal_err(e, "play stream", OxiSoundError::Stream)
 }
 
-pub(crate) fn map_default_config_err(e: cpal::DefaultStreamConfigError) -> OxiSoundError {
-    match e {
-        cpal::DefaultStreamConfigError::DeviceNotAvailable => {
-            OxiSoundError::Disconnected("default config: device not available".into())
-        }
-        _ => OxiSoundError::UnsupportedConfig(e.to_string()),
-    }
+pub(crate) fn map_devices_err(e: cpal::Error) -> OxiSoundError {
+    map_cpal_err(e, "enumerate devices", OxiSoundError::Device)
 }
 
-pub(crate) fn map_supported_configs_err(e: cpal::SupportedStreamConfigsError) -> OxiSoundError {
-    match e {
-        cpal::SupportedStreamConfigsError::DeviceNotAvailable => {
-            OxiSoundError::Disconnected("supported configs: device not available".into())
-        }
-        _ => OxiSoundError::Device(e.to_string()),
-    }
+pub(crate) fn map_default_config_err(e: cpal::Error) -> OxiSoundError {
+    map_cpal_err(e, "default config", OxiSoundError::UnsupportedConfig)
+}
+
+pub(crate) fn map_supported_configs_err(e: cpal::Error) -> OxiSoundError {
+    map_cpal_err(e, "supported configs", OxiSoundError::Device)
 }
 
 /// Maps a cpal sample format to the closest core `SampleFormat`.

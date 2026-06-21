@@ -2,7 +2,7 @@
 
 **OxiSound is the COOLJAPAN Pure-Rust audio device I/O layer.**
 
-Version: **0.1.3** — 2026-06-19
+Version: **0.2.0** — 2026-06-22
 
 [![Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 [![Rust 1.89+](https://img.shields.io/badge/rustc-1.89%2B-orange.svg)](https://releases.rs/docs/1.89.0/)
@@ -50,7 +50,7 @@ There are NO alsa/coreaudio/wasapi Cargo features — do NOT add them.
 
 ```toml
 [dependencies]
-oxisound = "0.1.3"
+oxisound = "0.2.0"
 ```
 
 ```rust
@@ -69,12 +69,12 @@ stream.stop()?;
 | `midi`           | MIDI I/O via `oxisound-midi`                                      |         |
 | `smf`            | SMF parser/writer/player via `oxisound-smf`                       |         |
 | `osc`            | OSC encode/decode/UDP via `oxisound-osc`                          |         |
-| `jack-native`    | JACK audio server client via `oxisound-jack`                      |         |
 | `session`        | Audio session management via `oxisound-session` (stub on non-Apple)|         |
 | `macos-session`  | `session` + AVFoundation backend (`avf-audio`) on macOS/iOS       |         |
 | `wasm`           | WebAudio backend for `wasm32-unknown-unknown`                     |         |
-| `asio`           | ASIO backend (Windows only)                                       |         |
 | `oxiaudio`       | Type bridge with `oxiaudio-core` (`SampleFormat` etc.)            |         |
+
+> **JACK / ASIO (0.2.0 change):** The `jack`, `jack-native`, and `asio` features have been removed from the `oxisound` facade to enforce COOLJAPAN Pure Rust Policy v2 §5. Applications requiring native JACK must depend on `oxisound-jack` directly (with the `jack-backend` feature). ASIO support requires a future dedicated quarantine crate.
 
 ## API Surface (oxisound facade)
 
@@ -177,7 +177,14 @@ let sender = oxisound_osc::OscSender::connect("127.0.0.1:9000")?;
 sender.send_message("/synth/note", vec![OscArg::Int(60)])?;
 ```
 
-## oxisound-jack (feature `jack-native`)
+## oxisound-jack (quarantine crate — C-FFI boundary)
+
+`oxisound-jack` is the sole COOLJAPAN quarantine crate for the libjack2 C-FFI. It is not exposed through the `oxisound` facade. Applications requiring native JACK depend on `oxisound-jack` directly:
+
+```toml
+[dependencies]
+oxisound-jack = { version = "0.2.0", features = ["jack-backend"] }
+```
 
 ```rust
 let dev = oxisound_jack::JackDevice::new("my_app")?;
@@ -206,18 +213,9 @@ println!("CPU load: {:.1}%", stream.cpu_load() * 100.0);
 
 ## Test Results
 
-**235 tests — 235 passed, 0 failed** (as of 2026-06-19)
+**194 tests passed** (as of 2026-06-22, version 0.2.0; 8 skipped — platform-conditional)
 
-```
-oxisound-core:    81 tests
-oxisound-cpal:    56 tests (hardware integration tests #[ignore])
-oxisound-midi:    15 tests
-oxisound-smf:     22 tests
-oxisound-jack:    20 tests (midi_util + metrics; hardware tests #[ignore])
-oxisound-osc:     12 tests
-oxisound-session:  4 tests
-oxisound:         25 tests
-```
+`oxisound-jack` was excluded from this run (no libjack2 available on macOS; `jack-backend` requires a Linux/macOS JACK daemon). All other crates pass.
 
 ## License
 

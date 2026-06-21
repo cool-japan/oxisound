@@ -5,6 +5,21 @@ All notable changes to the OxiSound workspace are documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 OxiSound adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] - 2026-06-22
+
+### Changed
+
+#### Pure Rust Policy v2 §5 — FFI quarantine enforcement (facade / adapter crates)
+
+- **`oxisound` facade** (`crates/oxisound/Cargo.toml`, `src/lib.rs`): removed `jack`, `asio`, and `jack-native` Cargo features; these forwarded C-FFI dependencies (`cpal/jack` → libjack2, `cpal/asio` → Steinberg ASIO SDK) through the pure facade, violating Policy v2 §5. Applications requiring native JACK must now depend on the `oxisound-jack` quarantine crate directly (`oxisound-jack = "0.2"`). ASIO support will require a dedicated `oxisound-*-asio` quarantine crate when/if created.
+- **`oxisound-cpal` adapter** (`crates/oxisound-cpal/Cargo.toml`, `src/device.rs`): removed `jack` (`cpal/jack`) and `asio` (`cpal/asio`) features for the same reason. `HostApi::Jack` and `HostApi::Asio` arms now unconditionally return `OxiSoundError::UnsupportedConfig` with a message directing users to the appropriate quarantine crate.
+- **`oxisound` facade** (`src/lib.rs`): removed `jack_output()`, `asio_output()`, `jack_native_output()`, `jack_native_input()`, `jack_midi_output()`, `jack_midi_input()` public functions and all `#[cfg(feature = "jack-native")]` re-exports of `oxisound_jack` types; JACK is no longer surfaced through the pure facade.
+- **Workspace** (`Cargo.toml`): bumped workspace version from `0.1.3` → `0.2.0`; updated all internal path-dependency version pins (`oxisound-core`, `oxisound-cpal`, `oxisound-midi`, `oxisound-jack`, `oxisound-smf`, `oxisound-osc`, `oxisound-session`) to `0.2.0`; updated `oxiaudio-core` and `oxiaudio` upstream deps from `0.1.4` → `0.2.0`; updated `[workspace.dependencies]` comment block to reflect the quarantine policy for the `jack` entry.
+
+#### `oxisound-jack` quarantine crate (retained, not removed)
+
+- `crates/oxisound-jack` is intentionally kept as the sole legitimate home for JACK/libjack2 C-FFI. The `jack-backend` feature still activates the binding. No functional changes in this release; doc comment updated to reflect `0.1.4` → correct version reference in the inline Cargo.toml example (minor doc-only fixup committed with the version bump).
+
 ## [0.1.3] - 2026-06-19
 
 ### Changed
@@ -157,3 +172,4 @@ OxiSound adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 [0.1.1]: https://github.com/cool-japan/oxisound/releases/tag/v0.1.1
 [0.1.2]: https://github.com/cool-japan/oxisound/releases/tag/v0.1.2
 [0.1.3]: https://github.com/cool-japan/oxisound/releases/tag/v0.1.3
+[0.2.0]: https://github.com/cool-japan/oxisound/releases/tag/v0.2.0

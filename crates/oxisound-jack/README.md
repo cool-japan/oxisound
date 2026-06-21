@@ -5,19 +5,19 @@
 
 `oxisound-jack` is a direct [JACK Audio Connection Kit](https://jackaudio.org/) client for OxiSound, providing low-latency audio (and MIDI) through the JACK process callback. JACK is inherently callback-based: the server invokes your `process` callback once per JACK buffer period. This crate exposes both a ring-buffer model (`JackOutputStream` / `JackInputStream`, matching `oxisound-cpal`'s usage) and a zero-copy model (`JackCallbackOutputStream`, lowest latency).
 
-> **Pure-Rust status: opt-in C-FFI backend, off by default.** The actual JACK client is gated behind the **`jack-backend`** feature, which enables the [`jack`](https://crates.io/crates/jack) 0.13.5 crate → `jack-sys` → **libjack2** (a C library that must be installed on the system). With default features, the crate compiles as a **Pure-Rust stub**: every `JackDevice` constructor returns `OxiSoundError::Unsupported`, so downstream crates can offer optional JACK support without `#[cfg]` boilerplate. This matches the COOLJAPAN Pure Rust Policy (default features are 100% Pure Rust; the C-FFI dependency is opt-in and treated as a permitted OS-boundary backend). This crate's own code is `#![forbid(unsafe_code)]`; the `jack` crate exposes a safe Rust API.
+> **Quarantine crate (since 0.2.0).** `oxisound-jack` is the sole COOLJAPAN quarantine crate for the libjack2 C-FFI under Pure Rust Policy v2 §5. The `oxisound` facade and `oxisound-cpal` no longer expose JACK features — applications requiring native JACK depend on this crate directly. The actual JACK client is gated behind the **`jack-backend`** feature, which enables the [`jack`](https://crates.io/crates/jack) 0.13.5 crate → `jack-sys` → **libjack2** (a C library that must be installed on the system). With default features, the crate compiles as a **Pure-Rust stub**: every `JackDevice` constructor returns `OxiSoundError::Unsupported`, so downstream crates can offer optional JACK support without `#[cfg]` boilerplate. This crate's own code is `#![forbid(unsafe_code)]`; the `jack` crate exposes a safe Rust API.
 
 ## Installation
 
 ```toml
 [dependencies]
 # Pure-Rust stub (default): all JackDevice constructors return Unsupported.
-oxisound-jack = "0.1.3"
+oxisound-jack = "0.2.0"
 ```
 
 ```toml
 # Real JACK client — links libjack2 (must be installed: Linux/macOS).
-oxisound-jack = { version = "0.1.3", features = ["jack-backend"] }
+oxisound-jack = { version = "0.2.0", features = ["jack-backend"] }
 ```
 
 ## Quick Start

@@ -4,6 +4,11 @@ Workspace-wide task list. Individual sub-crate TODOs live under `crates/<crate>/
 
 ## Release Status
 
+**v0.2.0 — Released 2026-06-22**
+
+- **Breaking (facade):** Removed `jack`, `jack-native`, and `asio` Cargo features from `oxisound` facade and `oxisound-cpal`. JACK is now opt-in via `oxisound-jack` quarantine crate only. ASIO: no quarantine crate yet (future work). Enforces COOLJAPAN Pure Rust Policy v2 §5.
+- **Tests:** 194 passing (8 skipped, platform-conditional); `oxisound-jack` excluded (no libjack2 on macOS).
+
 **v0.1.3 — Released 2026-06-19**
 
 **v0.1.2 — Released 2026-06-10**
@@ -17,7 +22,7 @@ Workspace-wide task list. Individual sub-crate TODOs live under `crates/<crate>/
 - **oxisound-smf**: Complete. SMF format 0/1 parser, TempoMap, SmfPlayer, SMF writer, serde support.
 - **oxisound-jack**: Complete (pure-Rust stub + jack-backend feature). JACK streams, MIDI ports, transport, observability metrics.
 - **oxisound-osc**: Complete. OSC encode/decode, all type tags, bundle support, UDP transport.
-- **Total workspace SLoC**: ~10,179 Rust (production + tests), 235 tests passing.
+- **Total workspace SLoC**: ~10,179 Rust (production + tests), 194 tests passing (0.2.0; oxisound-jack excluded on macOS).
 
 ## Publish Prerequisites
 

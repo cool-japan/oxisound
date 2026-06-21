@@ -15,9 +15,7 @@
 //!
 //! - `pure` (default) — enables the cpal backend ([`CpalDevice`] etc.)
 //! - `tokio` — enables async I/O (`async_output`, `capture_stream`)
-//! - `jack` — enables JACK audio backend (`jack_output`)
-//! - `asio` — enables ASIO audio backend (`asio_output`)
-//! - `jack-native` — enables direct JACK client (`jack_native_output`, `jack_native_input`, `JackDevice`); requires `libjack2`
+//! - JACK / ASIO are NOT facade features: native JACK lives in the `oxisound-jack` quarantine crate (depend on it directly); ASIO would require its own `oxisound-*-asio` quarantine crate.
 //!
 //! ## Platform Support
 //!
@@ -310,132 +308,14 @@ pub fn duplex_stream(config: StreamConfig) -> Result<Box<dyn DuplexStream>, OxiS
     CpalDevice::default_output()?.open_duplex(config)
 }
 
-/// Opens the default output device via the JACK audio backend.
-///
-/// Requires the `jack` Cargo feature and a running JACK server.
-///
-/// # Examples
-///
-/// ```no_run
-/// #[cfg(feature = "jack")]
-/// let device = oxisound::jack_output().ok();
-/// ```
-#[cfg(feature = "jack")]
-pub fn jack_output() -> Result<CpalDevice, OxiSoundError> {
-    CpalDevice::with_host(HostApi::Jack)
-}
-
-/// Opens the default output device via the ASIO audio backend.
-///
-/// Requires the `asio` Cargo feature and the Steinberg ASIO SDK.
-///
-/// # Examples
-///
-/// ```no_run
-/// #[cfg(feature = "asio")]
-/// let device = oxisound::asio_output().ok();
-/// ```
-#[cfg(feature = "asio")]
-pub fn asio_output() -> Result<CpalDevice, OxiSoundError> {
-    CpalDevice::with_host(HostApi::Asio)
-}
-
 // ---------------------------------------------------------------------------
-// Native JACK re-exports (oxisound-jack subcrate)
+// Native JACK (oxisound-jack quarantine crate) — Pure Rust Policy v2 §5
+//
+// JACK (libjack2 C-FFI) is NOT re-exported from this pure facade. Applications
+// that need it depend on the `oxisound-jack` crate directly:
+//     oxisound-jack = "0.2"
+// and call e.g. `oxisound_jack::JackDevice::new(...)`.
 // ---------------------------------------------------------------------------
-
-#[cfg(feature = "jack-native")]
-pub use oxisound_jack::{
-    JackCallbackOutputStream, JackDevice, JackInputStream, JackMetrics, JackOutputStream,
-    JackTransportPosition, JackTransportState, MetricsSnapshot, SysExEvent, SysExReassembler,
-    is_realtime, is_status, midi_message_len,
-};
-
-#[cfg(feature = "jack-native")]
-pub use oxisound_jack::{JackMidiInput, JackMidiOutput, MIDI_ENTRY_MAX, MidiEntry};
-
-/// Open a JACK audio output stream via the native JACK API (oxisound-jack subcrate).
-///
-/// Lower latency than cpal's JACK host. Requires `jack-native` feature and `libjack2`.
-/// Returns `Err(OxiSoundError::Unsupported(...))` when `jack-native` is not enabled.
-///
-/// # Examples
-///
-/// ```no_run
-/// let config = oxisound::StreamConfig::stereo_48k();
-/// let _output = oxisound::jack_native_output("my-app", config).expect("JACK output failed");
-/// ```
-#[cfg(feature = "jack-native")]
-#[must_use = "dropping the stream stops playback"]
-pub fn jack_native_output(
-    client_name: &str,
-    config: StreamConfig,
-) -> Result<JackOutputStream, OxiSoundError> {
-    JackDevice::new(client_name)?.open_output(config)
-}
-
-/// Open a JACK audio input stream via the native JACK API (oxisound-jack subcrate).
-///
-/// # Examples
-///
-/// ```no_run
-/// let config = oxisound::StreamConfig::mono_16k();
-/// let _input = oxisound::jack_native_input("my-app", config).expect("JACK input failed");
-/// ```
-#[cfg(feature = "jack-native")]
-#[must_use = "dropping the stream stops capture"]
-pub fn jack_native_input(
-    client_name: &str,
-    config: StreamConfig,
-) -> Result<JackInputStream, OxiSoundError> {
-    JackDevice::new(client_name)?.open_input(config)
-}
-
-/// Open a JACK MIDI output port for sending frame-accurate MIDI messages.
-///
-/// `port_name` is used as both the JACK client name and the MIDI output port name.
-/// Requires a running JACK server.
-///
-/// Requires the `jack-native` feature and `libjack2` installed on the system.
-///
-/// # Examples
-///
-/// ```no_run
-/// #[cfg(feature = "jack-native")]
-/// {
-///     let mut out = oxisound::jack_midi_output("my-synth").expect("JACK MIDI output failed");
-///     out.send_raw(0, &[0x90, 60, 100]).expect("send failed");
-/// }
-/// ```
-#[cfg(feature = "jack-native")]
-#[must_use = "dropping the port deactivates the JACK client"]
-pub fn jack_midi_output(port_name: &str) -> Result<JackMidiOutput, OxiSoundError> {
-    JackDevice::new(port_name)?.open_midi_output(port_name)
-}
-
-/// Open a JACK MIDI input port for receiving frame-accurate MIDI messages.
-///
-/// `port_name` is used as both the JACK client name and the MIDI input port name.
-/// Requires a running JACK server.
-///
-/// Requires the `jack-native` feature and `libjack2` installed on the system.
-///
-/// # Examples
-///
-/// ```no_run
-/// #[cfg(feature = "jack-native")]
-/// {
-///     let mut inp = oxisound::jack_midi_input("my-recorder").expect("JACK MIDI input failed");
-///     while let Some(entry) = inp.try_recv() {
-///         println!("MIDI frame={} data={:?}", entry.time, &entry.data[..entry.len as usize]);
-///     }
-/// }
-/// ```
-#[cfg(feature = "jack-native")]
-#[must_use = "dropping the port deactivates the JACK client"]
-pub fn jack_midi_input(port_name: &str) -> Result<JackMidiInput, OxiSoundError> {
-    JackDevice::new(port_name)?.open_midi_input(port_name)
-}
 
 // ---------------------------------------------------------------------------
 // OSC (Open Sound Control) re-exports

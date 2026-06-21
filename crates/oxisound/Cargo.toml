@@ -13,15 +13,16 @@ keywords = ["audio", "playback", "capture", "pure-rust", "cooljapan"]
 [features]
 default = ["pure"]
 pure = ["dep:oxisound-cpal"]
-jack = ["dep:oxisound-cpal", "oxisound-cpal/jack"]
-asio = ["dep:oxisound-cpal", "oxisound-cpal/asio"]
 tokio = ["dep:oxisound-cpal", "oxisound-cpal/tokio", "oxisound-core/tokio", "dep:futures-core", "dep:tokio-stream"]
 midi = ["dep:oxisound-midi"]
 smf = ["dep:oxisound-smf"]
 oxiaudio = ["pure", "oxisound-core/oxiaudio"]
 wasm = ["pure", "oxisound-cpal/wasm"]
-jack-native = ["dep:oxisound-jack", "oxisound-jack/jack-backend"]
 osc = ["dep:oxisound-osc"]
+# NOTE (Pure Rust Policy v2 §5): JACK support is NOT a facade feature. Native JACK
+# (C-FFI/libjack2) lives in the `oxisound-jack` quarantine crate — apps that need it
+# depend on `oxisound-jack` DIRECTLY. ASIO (Steinberg SDK, C++) likewise must live in
+# its own `*-asio` quarantine crate (not yet created) — see TODO/follow-up.
 # Enables the real AVAudioSession implementation on iOS / macOS via objc2-avf-audio.
 # On all other platforms this feature is a no-op (stubs return appropriate errors).
 session = ["dep:oxisound-session"]
@@ -33,7 +34,6 @@ oxisound-core = { workspace = true }
 oxisound-cpal = { workspace = true, optional = true }
 oxisound-midi = { workspace = true, optional = true }
 oxisound-smf = { workspace = true, optional = true }
-oxisound-jack = { workspace = true, optional = true }
 oxisound-osc = { workspace = true, optional = true }
 oxisound-session = { workspace = true, optional = true }
 futures-core = { workspace = true, optional = true }

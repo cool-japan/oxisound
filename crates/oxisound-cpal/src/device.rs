@@ -261,40 +261,19 @@ impl CpalDevice {
                 ));
             }
 
-            #[cfg(all(
-                feature = "jack",
-                any(
-                    target_os = "macos",
-                    target_os = "linux",
-                    target_os = "dragonfly",
-                    target_os = "freebsd",
-                    target_os = "netbsd"
-                )
-            ))]
-            HostApi::Jack => cpal::HostId::Jack,
-            #[cfg(not(all(
-                feature = "jack",
-                any(
-                    target_os = "macos",
-                    target_os = "linux",
-                    target_os = "dragonfly",
-                    target_os = "freebsd",
-                    target_os = "netbsd"
-                )
-            )))]
             HostApi::Jack => {
                 return Err(OxiSoundError::UnsupportedConfig(
-                    "JACK requires the 'jack' feature and a compatible platform (macOS/Linux)"
+                    "JACK is not available via cpal in OxiSound; depend on the \
+                     `oxisound-jack` quarantine crate (libjack2) directly"
                         .into(),
                 ));
             }
 
-            #[cfg(all(feature = "asio", target_os = "windows"))]
-            HostApi::Asio => cpal::HostId::Asio,
-            #[cfg(not(all(feature = "asio", target_os = "windows")))]
             HostApi::Asio => {
                 return Err(OxiSoundError::UnsupportedConfig(
-                    "ASIO requires the 'asio' feature and Windows".into(),
+                    "ASIO is not available in this build; it requires a dedicated \
+                     `oxisound-*-asio` quarantine crate (Steinberg ASIO SDK)"
+                        .into(),
                 ));
             }
 
@@ -466,7 +445,7 @@ impl CpalDevice {
         let stream = self
             .device
             .build_output_stream(
-                &cpal_config,
+                cpal_config,
                 move |data: &mut [f32], _: &cpal::OutputCallbackInfo| {
                     #[cfg(not(target_arch = "wasm32"))]
                     let t0 = std::time::Instant::now();
@@ -507,7 +486,7 @@ impl CpalDevice {
         let stream = self
             .device
             .build_input_stream(
-                &cpal_config,
+                cpal_config,
                 move |data: &[f32], _: &cpal::InputCallbackInfo| {
                     callback(data);
                 },
@@ -1181,21 +1160,24 @@ impl CpalDevice {
                 let sender = tx.clone();
                 self.device
                     .build_input_stream(
-                        &cpal_config,
+                        cpal_config,
                         move |data: &[f32], _: &cpal::InputCallbackInfo| {
                             let _ = sender.send(data.to_vec());
                         },
                         move |err| {
-                            use cpal::StreamError;
-                            match err {
-                                StreamError::DeviceNotAvailable
-                                | StreamError::StreamInvalidated
-                                | StreamError::BackendSpecific { .. } => {
+                            use cpal::ErrorKind;
+                            match err.kind() {
+                                ErrorKind::DeviceNotAvailable
+                                | ErrorKind::StreamInvalidated
+                                | ErrorKind::BackendError => {
                                     disc_cb.store(true, Ordering::Relaxed);
                                     log::error!("[oxisound-cpal] async input error: {err}");
                                 }
-                                StreamError::BufferUnderrun => {
+                                ErrorKind::Xrun => {
                                     log::warn!("[oxisound-cpal] async input buffer underrun");
+                                }
+                                _ => {
+                                    log::error!("[oxisound-cpal] async input error: {err}");
                                 }
                             }
                         },
@@ -1207,7 +1189,7 @@ impl CpalDevice {
                 let sender = tx.clone();
                 self.device
                     .build_input_stream(
-                        &cpal_config,
+                        cpal_config,
                         move |data: &[i16], _: &cpal::InputCallbackInfo| {
                             use dasp_sample::Sample as DaspSample;
                             let frames: Vec<f32> = data
@@ -1217,16 +1199,19 @@ impl CpalDevice {
                             let _ = sender.send(frames);
                         },
                         move |err| {
-                            use cpal::StreamError;
-                            match err {
-                                StreamError::DeviceNotAvailable
-                                | StreamError::StreamInvalidated
-                                | StreamError::BackendSpecific { .. } => {
+                            use cpal::ErrorKind;
+                            match err.kind() {
+                                ErrorKind::DeviceNotAvailable
+                                | ErrorKind::StreamInvalidated
+                                | ErrorKind::BackendError => {
                                     disc_cb.store(true, Ordering::Relaxed);
                                     log::error!("[oxisound-cpal] async i16 input error: {err}");
                                 }
-                                StreamError::BufferUnderrun => {
+                                ErrorKind::Xrun => {
                                     log::warn!("[oxisound-cpal] async i16 input buffer underrun");
+                                }
+                                _ => {
+                                    log::error!("[oxisound-cpal] async i16 input error: {err}");
                                 }
                             }
                         },
@@ -1238,7 +1223,7 @@ impl CpalDevice {
                 let sender = tx.clone();
                 self.device
                     .build_input_stream(
-                        &cpal_config,
+                        cpal_config,
                         move |data: &[i32], _: &cpal::InputCallbackInfo| {
                             use dasp_sample::Sample as DaspSample;
                             let frames: Vec<f32> = data
@@ -1248,18 +1233,21 @@ impl CpalDevice {
                             let _ = sender.send(frames);
                         },
                         move |err| {
-                            use cpal::StreamError;
-                            match err {
-                                StreamError::DeviceNotAvailable
-                                | StreamError::StreamInvalidated
-                                | StreamError::BackendSpecific { .. } => {
+                            use cpal::ErrorKind;
+                            match err.kind() {
+                                ErrorKind::DeviceNotAvailable
+                                | ErrorKind::StreamInvalidated
+                                | ErrorKind::BackendError => {
                                     disc_cb.store(true, Ordering::Relaxed);
                                     log::error!("[oxisound-cpal] async i24/i32 input error: {err}");
                                 }
-                                StreamError::BufferUnderrun => {
+                                ErrorKind::Xrun => {
                                     log::warn!(
                                         "[oxisound-cpal] async i24/i32 input buffer underrun"
                                     );
+                                }
+                                _ => {
+                                    log::error!("[oxisound-cpal] async i24/i32 input error: {err}");
                                 }
                             }
                         },

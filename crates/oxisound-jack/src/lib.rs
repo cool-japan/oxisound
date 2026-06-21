@@ -4,7 +4,7 @@
 //! Enable the `jack-backend` feature to activate the libjack2 C binding:
 //!
 //! ```toml
-//! oxisound-jack = { version = "0.1.3", features = ["jack-backend"] }
+//! oxisound-jack = { version = "0.1.4", features = ["jack-backend"] }
 //! ```
 //!
 //! ## GOVERNANCE (COOLJAPAN policy)

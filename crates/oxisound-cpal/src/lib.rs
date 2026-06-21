@@ -6,7 +6,7 @@
 //! Enable the `wasm` feature to target `wasm32-unknown-unknown` via cpal's WebAudio backend:
 //!
 //! ```toml
-//! oxisound-cpal = { version = "0.1.3", features = ["wasm"] }
+//! oxisound-cpal = { version = "0.1.4", features = ["wasm"] }
 //! ```
 //!
 //! **GOVERNANCE note (COOLJAPAN policy):** The Web Audio API is classified as an OS-boundary
@@ -177,10 +177,10 @@ mod tests {
 
     #[test]
     fn test_error_mapping_device_not_available() {
-        let e = error::map_build_stream_err(cpal::BuildStreamError::DeviceNotAvailable);
+        let e = error::map_build_stream_err(cpal::Error::new(cpal::ErrorKind::DeviceNotAvailable));
         assert!(matches!(e, oxisound_core::OxiSoundError::Disconnected(_)));
 
-        let e = error::map_play_stream_err(cpal::PlayStreamError::DeviceNotAvailable);
+        let e = error::map_play_stream_err(cpal::Error::new(cpal::ErrorKind::DeviceNotAvailable));
         assert!(matches!(e, oxisound_core::OxiSoundError::Disconnected(_)));
     }
 

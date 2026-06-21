@@ -5,23 +5,25 @@
 
 `oxisound` is the top-level façade crate for the OxiSound ecosystem. It gives you one flat, ergonomic API — `open_output`, `open_input`, `play_callback`, `enumerate_devices`, and friends — that hides which backend is doing the work. Cargo feature flags select the backend: the default `pure` feature uses the cpal backend ([`oxisound-cpal`](../oxisound-cpal)), while optional features pull in native JACK ([`oxisound-jack`](../oxisound-jack)), MIDI device I/O ([`oxisound-midi`](../oxisound-midi)), Standard MIDI File support ([`oxisound-smf`](../oxisound-smf)), or Open Sound Control ([`oxisound-osc`](../oxisound-osc)). All device traits and shared types come from [`oxisound-core`](../oxisound-core) and are re-exported at the crate root, so most programs only ever `use oxisound::…`.
 
-The crate is `#![forbid(unsafe_code)]` at the facade layer. **Pure-Rust status depends on the features you enable.** The default `pure` (cpal), `tokio`, `midi`, `smf`, and `osc` paths are Pure Rust. The `jack` and `jack-native` features link the system `libjack2`, and the `asio` feature requires the Steinberg ASIO SDK — these are **not** Pure Rust and exist only as opt-in escape hatches for low-latency professional audio.
+The crate is `#![forbid(unsafe_code)]` at the facade layer. **Pure-Rust status depends on the features you enable.** The default `pure` (cpal), `tokio`, `midi`, `smf`, and `osc` paths are Pure Rust.
+
+> **0.2.0 change:** The `jack`, `jack-native`, and `asio` features have been removed from this facade (COOLJAPAN Pure Rust Policy v2 §5 — FFI quarantine enforcement). Applications requiring native JACK must depend on `oxisound-jack` directly with its `jack-backend` feature. ASIO support requires a future dedicated quarantine crate.
 
 ## Installation
 
 ```toml
 [dependencies]
 # Default: Pure-Rust cpal backend
-oxisound = "0.1.3"
+oxisound = "0.2.0"
 
 # Async streaming (tokio) + Pure-Rust playback
-oxisound = { version = "0.1.3", features = ["tokio"] }
+oxisound = { version = "0.2.0", features = ["tokio"] }
 
 # Add live MIDI + Standard MIDI File playback
-oxisound = { version = "0.1.3", features = ["midi", "smf"] }
+oxisound = { version = "0.2.0", features = ["midi", "smf"] }
 
 # Add Open Sound Control
-oxisound = { version = "0.1.3", features = ["osc"] }
+oxisound = { version = "0.2.0", features = ["osc"] }
 ```
 
 ## Quick Start
@@ -69,9 +71,8 @@ print!("{}", oxisound::format_devices(&devices));
 | `macos-session` | — | ✗ | `oxisound-session/avf-audio` | `session` + AVFoundation Obj-C FFI on iOS/macOS |
 | `oxiaudio` | — | ✓ | `oxisound-core/oxiaudio` | OxiAudio integration in `oxisound-core` (implies `pure`) |
 | `wasm` | — | ✓ | `oxisound-cpal/wasm` | WebAudio backend for `wasm32` targets (implies `pure`) |
-| `jack` | — | ✗ | `oxisound-cpal/jack` | cpal's JACK host (`jack_output`); requires `libjack2` |
-| `jack-native` | — | ✗ | `oxisound-jack` | Native low-latency JACK client (`jack_native_output`, `JackDevice`, …); requires `libjack2` |
-| `asio` | — | ✗ | `oxisound-cpal/asio` | ASIO backend (`asio_output`); requires the Steinberg ASIO SDK (Windows) |
+
+> **JACK / ASIO removed in 0.2.0.** The `jack`, `jack-native`, and `asio` features were removed from this crate. Use `oxisound-jack` with `jack-backend` directly for JACK support.
 
 > The `smf` + `midi` combination additionally unlocks `play_smf` (parse and play a `.mid` straight to a MIDI port).
 
@@ -153,15 +154,6 @@ Pure-computation helpers that return interleaved `Vec<f32>` buffers — handy fo
 
 Re-exports from [`oxisound-osc`](../oxisound-osc): `OscArg`, `OscMessage`, `OscBundle`, `OscPacket`, `OscTimeTag`, `OscError`, `OscSender`, `OscReceiver`, plus `encode_osc` / `decode_osc` (the crate's `encode` / `decode` functions, renamed at re-export).
 
-### Native JACK (`jack-native` feature — not Pure Rust)
-
-| Item | Description |
-|------|-------------|
-| `jack_native_output(client_name, config)` | Open a native JACK output stream (lower latency than cpal's JACK host) |
-| `jack_native_input(client_name, config)` | Open a native JACK input stream |
-| `jack_midi_output(port_name)` / `jack_midi_input(port_name)` | Frame-accurate JACK MIDI ports |
-| re-exports | `JackDevice`, `JackOutputStream`, `JackInputStream`, `JackCallbackOutputStream`, `JackMidiInput`, `JackMidiOutput`, `JackMetrics`, `JackTransportState`, `JackTransportPosition`, `SysExEvent`, `SysExReassembler`, `MidiEntry`, helpers `is_realtime`, `is_status`, `midi_message_len`, const `MIDI_ENTRY_MAX` |
-
 ### Session & permissions
 
 | Function | Description |
@@ -174,6 +166,8 @@ Re-exports from [`oxisound-osc`](../oxisound-osc): `OscArg`, `OscMessage`, `OscB
 From [`oxisound-core`](../oxisound-core): `AudioDevice`, `InputStream`, `OutputStream`, `DuplexStream`, `StreamConfig`, `StreamStats`, `SampleFormat`, `NegotiatedConfig`, `Channel`, `ChannelRouting`, `HostApi`, `DeviceInfo`, `DeviceCapabilities`, `DeviceEvent`, `DeviceSelector`, `DefaultSelector`, `NameMatchSelector`, `LatencyOptimalSelector`, `DeviceNotificationCallback`, `CallbackPriority`, `MidiDevice`, `MidiInput`, `MidiOutput`, `MidiDeviceInfo`, `MidiMessage`, `SessionCategory`, `SessionInterruptionEvent`, and the crate error type `OxiSoundError`.
 
 Backend-specific re-exports appear under their features: `CpalDevice`, `CpalOutputStream`, `CpalCallbackInputStream`, `CpalCallbackOutputStream`, `CpalDeviceWatcher`, `DeviceChangeGuard`, `AdaptiveBufferSizer`, `StreamHealth` (`pure`); `CpalAsyncInputStream`, `CpalAsyncOutputStream`, `AsyncInputStream`, `AsyncOutputStream` (`tokio`).
+
+> `oxisound-jack` types (`JackDevice`, `JackOutputStream`, etc.) are no longer re-exported here since 0.2.0. Depend on `oxisound-jack` directly.
 
 ## Platform Support
 
@@ -191,8 +185,8 @@ Backend-specific re-exports appear under their features: `CpalDevice`, `CpalOutp
 ## Related crates
 
 - [`oxisound-core`](../oxisound-core) — device/stream traits and shared types (re-exported here)
-- [`oxisound-cpal`](../oxisound-cpal) — the default Pure-Rust cpal backend (`pure`, `tokio`, `wasm`, `jack`, `asio`)
-- [`oxisound-jack`](../oxisound-jack) — native JACK client backend (`jack-native`)
+- [`oxisound-cpal`](../oxisound-cpal) — the default Pure-Rust cpal backend (`pure`, `tokio`, `wasm`)
+- [`oxisound-jack`](../oxisound-jack) — native JACK client quarantine crate (C-FFI, use directly with `jack-backend` feature; not exposed through this facade since 0.2.0)
 - [`oxisound-midi`](../oxisound-midi) — live MIDI device I/O (`midi`)
 - [`oxisound-smf`](../oxisound-smf) — Standard MIDI File reader/writer/player (`smf`)
 - [`oxisound-osc`](../oxisound-osc) — Open Sound Control codec and UDP transport (`osc`)
