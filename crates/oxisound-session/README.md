@@ -19,10 +19,10 @@ Apple and non-Apple platforms without `#[cfg]` guards.
 ```toml
 [dependencies]
 # Pure-Rust stubs (macOS desktop returns Ok(()), other platforms return errors)
-oxisound-session = "0.2.0"
+oxisound-session = "0.2.1"
 
 # Enable real AVAudioSession calls on iOS / macOS (links objc2-avf-audio)
-oxisound-session = { version = "0.2.0", features = ["avf-audio"] }
+oxisound-session = { version = "0.2.1", features = ["avf-audio"] }
 ```
 
 ## Quick Start

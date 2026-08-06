@@ -61,7 +61,11 @@ pub struct ReconnectInner {
 
 /// RAII guard that keeps the auto-recovery background thread alive.
 ///
-/// Drop to stop monitoring.  The thread joins cleanly within two poll cycles (≤ 200 ms).
+/// Drop to stop monitoring.  When idle the thread joins cleanly within two poll cycles
+/// (≤ 200 ms).  If a reconnect attempt is in flight, the rebuild goes through the
+/// bounded `open_output_inner_with_shared_arcs` path, so the attempt — and therefore
+/// the join — is capped by [`STREAM_OPEN_TIMEOUT`](crate::STREAM_OPEN_TIMEOUT) rather
+/// than blocking forever on a wedged backend.
 /// Not available on `wasm32` (no OS threads).
 #[cfg(not(target_arch = "wasm32"))]
 #[must_use = "drop the RecoveryHandle to stop the reconnect monitor"]

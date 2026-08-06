@@ -1,7 +1,15 @@
 # oxisound (facade) TODO
 
 ## Status
-Public facade exposing COOLJAPAN audio device I/O API. Re-exports all oxisound-core types. Provides convenience functions: `default_output`, `default_input`, `enumerate_devices`, `open_output`, `open_input`, `select_device`, `duplex_stream`, `jack_output`, `asio_output`, `latency_ms`, `format_devices`, `sine_test_tone`, `async_output`, `capture_stream`. Four examples (device_info, sine_tone, playback, capture). Feature flags: `pure` (default), `jack`, `asio`, `tokio`. M0-M5 complete. Approximately 270 SLOC.
+Public facade exposing COOLJAPAN audio device I/O API. Re-exports all oxisound-core types. Provides convenience functions: `default_output`, `default_input`, `enumerate_devices`, `open_output`, `open_input`, `select_device`, `duplex_stream`, `latency_ms`, `format_devices`, `sine_test_tone`, `async_output`, `capture_stream`, plus the `pulse_*` family (`pulse_enumerate_devices`, `pulse_default_output`, `pulse_default_input`, `pulse_output`, `pulse_input`, `pulse_duplex`, `pulse_output_named`, `pulse_input_named`) behind the `pulse` feature. Feature flags: `pure` (default), `pulse`, `tokio`, `midi`, `smf`, `osc`, `session`, `macos-session`, `oxiaudio`, `wasm`. M0-M6 complete.
+
+> **2026-08-06 correction:** this Status paragraph previously listed `jack_output` / `asio_output`
+> convenience functions and `jack` / `asio` feature flags. All four were removed from this facade in
+> 0.2.0 under Pure Rust Policy v2 §5 (verified absent from `crates/oxisound/src/`) — native JACK now
+> lives only in the `oxisound-jack` quarantine crate, and ASIO has no quarantine crate at all. The
+> example list ("device_info, sine_tone, playback, capture") was also wrong; the real examples are
+> `decode_play`, `realtime_eq`, `capture_encode`, `async_monitor`, `ws_broadcast`, `play_midi`,
+> `smf_synth`, `osc_bridge`.
 
 ## Core Implementation
 
@@ -44,11 +52,24 @@ Public facade exposing COOLJAPAN audio device I/O API. Re-exports all oxisound-c
 - [x] Add `open_midi_output(port: usize) -> Result<Box<dyn MidiOutput>, OxiSoundError>` (~10 SLOC)
     - **Done:** Delegates to oxisound-midi::MidiDeviceImpl; feature-gated on 2026-05-25.
 
-### PipeWire Convenience
-- [x] Add `#[cfg(feature = "pipewire")] pub fn pipewire_output()` — Done 2026-05-26: `pipewire_output(config)` and `pipewire_input(config)` added behind `pipewire` feature; delegate to `oxisound_pipewire::PipeWireDevice::new("oxisound").open_output` / `.open_input`.
+### PipeWire Convenience — REMOVED
+> **2026-08-03 correction:** No `pipewire` feature exists in `crates/oxisound/Cargo.toml`
+> and no `pipewire_output`/`pipewire_input` functions exist in `crates/oxisound/src/lib.rs`
+> (grep confirms both absent). There is no `oxisound-pipewire` crate in the workspace to
+> delegate to (see the equivalent correction in the workspace-root `TODO.md`). Tracking
+> this as `[x] Done` was false.
 
-### Native JACK Convenience
-- [x] Native JACK integration via oxisound-jack: jack-native feature adds JackDevice, JackOutputStream, JackInputStream, JackCallbackOutputStream, JackTransportState, JackTransportPosition re-exports and jack_native_output/jack_native_input convenience functions — Done 2026-05-26.
+### Native JACK Convenience — REMOVED (Pure Rust Policy v2 §5, 0.2.0)
+> **2026-08-03 correction:** `jack_native_output`/`jack_native_input` and the `jack-native`
+> feature do not exist in this facade (grep of `crates/oxisound/src/lib.rs` and
+> `crates/oxisound/Cargo.toml` confirms both absent). `CHANGELOG.md`'s `[0.2.0]` entry
+> documents the actual history: these functions, plus `jack_output`/`asio_output`/
+> `jack_midi_output`/`jack_midi_input` and the `#[cfg(feature = "jack-native")]`
+> re-exports, were deliberately removed to enforce COOLJAPAN Pure Rust Policy v2 §5.
+> Applications needing native JACK depend on the `oxisound-jack` quarantine crate
+> directly (`oxisound-jack = { version = "0.2", features = ["jack-backend"] }`) — see
+> `crates/oxisound-jack/README.md`. Tracking this as `[x] Done` on the facade was false
+> after the 0.2.0 removal; it was accurate only for versions prior to 0.2.0.
 
 ## API Improvements
 - [x] Add `#[must_use]` on all Result-returning public functions (~5 SLOC)

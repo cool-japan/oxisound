@@ -1,0 +1,28 @@
+[package]
+name = "oxisound-pulse"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+description = "Pure-Rust PulseAudio native-protocol backend for OxiSound (works with PulseAudio and PipeWire's pipewire-pulse; no C, no unsafe)"
+categories = ["multimedia::audio", "os::linux-apis"]
+keywords = ["pulseaudio", "pipewire", "audio", "linux", "cooljapan"]
+
+[dependencies]
+oxisound-core = { workspace = true }
+log = { workspace = true }
+# Lock-free SPSC byte rings shared with the PulseAudio reactor thread.
+ringbuf = { workspace = true }
+# `block_on` for driving the async PulseAudio client API under an explicit deadline.
+# Pure Rust and platform-independent, so it is NOT target-gated: the timeout
+# machinery in `crate::timeout` is unit-tested on every host.
+futures-executor = { workspace = true }
+
+# PulseAudio native-protocol implementation. Linux-only on purpose: the crate pulls
+# `mio` (with the epoll/eventfd feature set) and is only meaningful where a
+# PulseAudio- or pipewire-pulse-provided unix socket exists. Every other target
+# compiles `src/stub.rs`, whose constructors return `OxiSoundError::Unsupported`.
+[target.'cfg(target_os = "linux")'.dependencies]
+pulseaudio = { workspace = true }

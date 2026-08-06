@@ -6,6 +6,19 @@ use std::net::UdpSocket;
 use crate::{OscError, OscPacket, decode};
 
 /// Listens on a UDP socket and decodes incoming OSC packets.
+///
+/// # Example
+///
+/// ```rust,no_run
+/// use std::time::Duration;
+/// use oxisound_osc::OscReceiver;
+///
+/// let receiver = OscReceiver::bind("0.0.0.0:57120")?;
+/// receiver.set_timeout(Some(Duration::from_millis(500)))?;
+/// let packet = receiver.recv()?;
+/// println!("received: {packet:?}");
+/// # Ok::<(), oxisound_osc::OscError>(())
+/// ```
 pub struct OscReceiver {
     socket: UdpSocket,
 }

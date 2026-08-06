@@ -6,7 +6,7 @@
 //! Enable the `wasm` feature to target `wasm32-unknown-unknown` via cpal's WebAudio backend:
 //!
 //! ```toml
-//! oxisound-cpal = { version = "0.1.4", features = ["wasm"] }
+//! oxisound-cpal = { version = "0.2.1", features = ["wasm"] }
 //! ```
 //!
 //! **GOVERNANCE note (COOLJAPAN policy):** The Web Audio API is classified as an OS-boundary
@@ -30,6 +30,7 @@ compile_error!(
 );
 
 mod adaptive;
+mod bounded_open;
 mod callback;
 mod config_helpers;
 mod device;
@@ -45,10 +46,13 @@ mod async_streams;
 
 // Re-export public types
 pub use adaptive::AdaptiveBufferSizer;
+// STREAM_OPEN_TIMEOUT bounds every stream-open path; DUPLEX_OPEN_TIMEOUT (its equal)
+// predates the generalization and is kept for API stability.
+pub use bounded_open::STREAM_OPEN_TIMEOUT;
 pub use callback::{CpalCallbackInputStream, CpalCallbackOutputStream};
-pub use device::CpalDevice;
 #[cfg(not(target_arch = "wasm32"))]
 pub use device::DeviceChangeGuard;
+pub use device::{CpalDevice, DUPLEX_OPEN_TIMEOUT};
 #[cfg(not(target_arch = "wasm32"))]
 pub use recovery::RecoveryHandle;
 pub use streams::{CpalDuplexStream, CpalInputStream, CpalOutputStream, StreamHealth};
@@ -184,19 +188,58 @@ mod tests {
         assert!(matches!(e, oxisound_core::OxiSoundError::Disconnected(_)));
     }
 
+    /// `open_duplex` must always return within a bounded time.
+    ///
+    /// `CpalDevice::open_duplex` performs the whole open sequence on a worker thread bounded
+    /// by [`DUPLEX_OPEN_TIMEOUT`], so on a pathological backend device (e.g. an ALSA PCM whose
+    /// slave cannot be opened) it returns `Err(Timeout)` instead of blocking forever.  This
+    /// test enforces that from the outside with its own watchdog, so a regression that
+    /// reintroduces an unbounded call fails with a clear message instead of hanging the suite
+    /// until someone interrupts it.
     #[test]
     fn test_duplex_open_no_panic() {
-        let device = match CpalDevice::default_output() {
-            Ok(d) => d,
-            Err(e) => {
-                println!("No output device: {e}");
-                return;
+        // Generously above DUPLEX_OPEN_TIMEOUT (15 s) so a healthy-but-slow machine never
+        // trips the watchdog; anything beyond this is a genuine hang.
+        const WATCHDOG: std::time::Duration = std::time::Duration::from_secs(60);
+
+        let (tx, rx) = std::sync::mpsc::channel::<String>();
+        // The stream is opened *and dropped* on the worker thread: `cpal::Stream::drop` joins
+        // the backend's audio thread and can itself block on a broken device, so it must stay
+        // on the watched side of the watchdog too.
+        let worker = std::thread::spawn(move || {
+            let device = match CpalDevice::default_output() {
+                Ok(d) => d,
+                Err(e) => {
+                    let _ = tx.send(format!("No output device: {e}"));
+                    return;
+                }
+            };
+            let config = oxisound_core::StreamConfig::stereo_48k();
+            let msg = match device.open_duplex(config) {
+                Ok(_) => "open_duplex() succeeded".to_string(),
+                Err(e) => format!("open_duplex() returned Err (OK in CI): {e}"),
+            };
+            let _ = tx.send(msg);
+        });
+
+        match rx.recv_timeout(WATCHDOG) {
+            Ok(msg) => {
+                println!("{msg}");
+                // Deliberately detached rather than joined: `join()` is unbounded and would
+                // sit *outside* this watchdog, so a blocking drop on the worker could hang
+                // the test even though the watchdog already did its job.  The thread has
+                // nothing blocking left to do after its send, and the process reaps it.
+                drop(worker);
             }
-        };
-        let config = oxisound_core::StreamConfig::stereo_48k();
-        match device.open_duplex(config) {
-            Ok(_) => println!("open_duplex() succeeded"),
-            Err(e) => println!("open_duplex() returned Err (OK in CI): {e}"),
+            Err(std::sync::mpsc::RecvTimeoutError::Timeout) => panic!(
+                "open_duplex did not return within {}s; the bounded open \
+                 (DUPLEX_OPEN_TIMEOUT = {}s) failed to bound the audio backend call",
+                WATCHDOG.as_secs(),
+                DUPLEX_OPEN_TIMEOUT.as_secs()
+            ),
+            Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => {
+                panic!("open_duplex worker thread died without reporting a result (panic?)")
+            }
         }
     }
 

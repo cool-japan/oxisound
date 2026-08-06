@@ -15,6 +15,12 @@
 //!
 //! - `pure` (default) — enables the cpal backend ([`CpalDevice`] etc.)
 //! - `tokio` — enables async I/O (`async_output`, `capture_stream`)
+//! - `pulse` (opt-in, **not** in `default`) — enables the Pure-Rust PulseAudio
+//!   native-protocol backend ([`PulseDevice`], [`pulse_output`], [`pulse_input`],
+//!   [`pulse_enumerate_devices`]). On Linux it is the only backend with no C library in
+//!   the audio path; it also serves PipeWire through `pipewire-pulse`. On non-Linux
+//!   targets the backend compiles as a Pure-Rust stub returning
+//!   [`OxiSoundError::Unsupported`], so enabling the feature never breaks a build.
 //! - JACK / ASIO are NOT facade features: native JACK lives in the `oxisound-jack` quarantine crate (depend on it directly); ASIO would require its own `oxisound-*-asio` quarantine crate.
 //!
 //! ## Platform Support
@@ -26,10 +32,11 @@
 //! | Callback mode | ✓ | ✓ | ✓ | ✓ | — |
 //! | Device hot-plug | ✓ | ✓ | ✓ | — | — |
 //! | Auto-reconnect | ✓ | ✓ | ✓ | — | — |
-//! | JACK | ✓ | ✓ | — | — | — |
-//! | ASIO | — | — | ✓ | — | — |
+//! | PulseAudio / PipeWire (`pulse`) | — | ✓ | — | — | — |
+//! | JACK (via `oxisound-jack`, not this facade) | ✓ | ✓ | — | — | — |
+//! | ASIO (no quarantine crate exists yet) | — | — | — | — | — |
 //! | Exclusive mode | — | — | planned | — | — |
-//! | Loopback capture | — | planned | planned | — | — |
+//! | Loopback capture | — | ✓ (Pulse/PipeWire monitor source) | planned | — | — |
 //!
 //! # Test Tone Generators
 //!
@@ -313,9 +320,254 @@ pub fn duplex_stream(config: StreamConfig) -> Result<Box<dyn DuplexStream>, OxiS
 //
 // JACK (libjack2 C-FFI) is NOT re-exported from this pure facade. Applications
 // that need it depend on the `oxisound-jack` crate directly:
-//     oxisound-jack = "0.2"
+//     oxisound-jack = "0.2.1"
 // and call e.g. `oxisound_jack::JackDevice::new(...)`.
 // ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// PulseAudio native-protocol backend (`pulse` feature, opt-in)
+//
+// A Pure-Rust alternative to the default cpal/ALSA path on Linux: it speaks the
+// PulseAudio native IPC protocol over a unix socket, so no C library sits in the
+// audio path. The same socket is served by PipeWire's `pipewire-pulse` shim.
+//
+// NOTE: `CpalDevice::with_host(HostApi::PulseAudio)` still returns an error and will
+// keep doing so — cpal has no PulseAudio host to dispatch to, which is exactly why
+// `oxisound-pulse` exists. Use the functions below (or `PulseDevice` directly).
+// ---------------------------------------------------------------------------
+
+#[cfg(feature = "pulse")]
+pub use oxisound_pulse::{
+    PulseDevice, PulseDeviceDescriptor, PulseDeviceRole, PulseDuplexStream, PulseInputStream,
+    PulseOutputStream, PulseSampleFormat,
+};
+
+/// Enumerates every PulseAudio sink and source.
+///
+/// Requires the `pulse` feature. Sinks are reported with `is_output`, sources
+/// (including monitor sources) with `is_input`; every entry has at least one role.
+/// Returns [`OxiSoundError::Unsupported`] on non-Linux targets.
+///
+/// # Errors
+///
+/// Propagates connection and round-trip failures from the PulseAudio server.
+///
+/// # Examples
+///
+/// ```no_run
+/// # #[cfg(feature = "pulse")]
+/// # {
+/// let devices = oxisound::pulse_enumerate_devices().expect("enumeration failed");
+/// for d in &devices {
+///     assert!(d.is_input || d.is_output);
+///     println!("{d}");
+/// }
+/// # }
+/// ```
+#[must_use = "handle or discard the returned device list"]
+#[cfg(feature = "pulse")]
+pub fn pulse_enumerate_devices() -> Result<Vec<DeviceInfo>, OxiSoundError> {
+    <PulseDevice as AudioDevice>::enumerate()
+}
+
+/// Returns the PulseAudio server's default sink.
+///
+/// Requires the `pulse` feature.
+///
+/// # Errors
+///
+/// Propagates connection failures, or [`OxiSoundError::NoDevice`] when the server has no
+/// usable default sink.
+///
+/// # Examples
+///
+/// ```no_run
+/// # #[cfg(feature = "pulse")]
+/// # {
+/// let device = oxisound::pulse_default_output().expect("no PulseAudio sink");
+/// println!("{:?}", device.descriptor());
+/// # }
+/// ```
+#[must_use = "handle or discard the returned device"]
+#[cfg(feature = "pulse")]
+pub fn pulse_default_output() -> Result<PulseDevice, OxiSoundError> {
+    <PulseDevice as AudioDevice>::default_output()
+}
+
+/// Returns the PulseAudio server's default source.
+///
+/// Requires the `pulse` feature.
+///
+/// # Errors
+///
+/// Propagates connection failures, or [`OxiSoundError::NoDevice`] when the server has no
+/// usable default source.
+///
+/// # Examples
+///
+/// ```no_run
+/// # #[cfg(feature = "pulse")]
+/// # {
+/// let device = oxisound::pulse_default_input().expect("no PulseAudio source");
+/// # }
+/// ```
+#[must_use = "handle or discard the returned device"]
+#[cfg(feature = "pulse")]
+pub fn pulse_default_input() -> Result<PulseDevice, OxiSoundError> {
+    <PulseDevice as AudioDevice>::default_input()
+}
+
+/// Opens a playback stream on the PulseAudio default sink.
+///
+/// The PulseAudio counterpart of `open_output` (the cpal-backed default). Requires the
+/// `pulse` feature.
+///
+/// # Errors
+///
+/// Propagates connection and stream-creation failures.
+///
+/// # Examples
+///
+/// ```no_run
+/// # #[cfg(feature = "pulse")]
+/// # {
+/// use oxisound::StreamConfig;
+/// let mut stream = oxisound::pulse_output(StreamConfig::stereo_48k()).expect("open failed");
+/// stream.write(&vec![0.0f32; 9_600]).expect("write failed");
+/// # }
+/// ```
+#[must_use = "handle or discard the returned stream"]
+#[cfg(feature = "pulse")]
+pub fn pulse_output(config: StreamConfig) -> Result<Box<dyn OutputStream>, OxiSoundError> {
+    <PulseDevice as AudioDevice>::default_output()?.open_output(config)
+}
+
+/// Opens a capture stream on the PulseAudio default source.
+///
+/// The PulseAudio counterpart of `open_input` (the cpal-backed default). Requires the
+/// `pulse` feature.
+///
+/// # Errors
+///
+/// Propagates connection and stream-creation failures.
+///
+/// # Examples
+///
+/// ```no_run
+/// # #[cfg(feature = "pulse")]
+/// # {
+/// use oxisound::StreamConfig;
+/// let mut stream = oxisound::pulse_input(StreamConfig::mono_16k()).expect("open failed");
+/// let mut buf = vec![0.0f32; 1_600];
+/// let n = stream.read(&mut buf).expect("read failed");
+/// println!("read {n} samples");
+/// # }
+/// ```
+#[must_use = "handle or discard the returned stream"]
+#[cfg(feature = "pulse")]
+pub fn pulse_input(config: StreamConfig) -> Result<Box<dyn InputStream>, OxiSoundError> {
+    <PulseDevice as AudioDevice>::default_input()?.open_input(config)
+}
+
+/// Opens a duplex stream (default sink + default source) on one PulseAudio connection.
+///
+/// The PulseAudio counterpart of `duplex_stream` (the cpal-backed default). Requires the
+/// `pulse` feature.
+///
+/// # Errors
+///
+/// Propagates connection and stream-creation failures from either half.
+///
+/// # Examples
+///
+/// ```no_run
+/// # #[cfg(feature = "pulse")]
+/// # {
+/// use oxisound::StreamConfig;
+/// let mut duplex = oxisound::pulse_duplex(StreamConfig::stereo_48k()).expect("open failed");
+/// # }
+/// ```
+#[must_use = "handle or discard the returned stream"]
+#[cfg(feature = "pulse")]
+pub fn pulse_duplex(config: StreamConfig) -> Result<Box<dyn DuplexStream>, OxiSoundError> {
+    <PulseDevice as AudioDevice>::default_output()?.open_duplex(config)
+}
+
+/// Opens a playback stream on a named PulseAudio sink.
+///
+/// `name` is the server-side sink name from [`DeviceInfo::name`], for example
+/// `alsa_output.pci-0000_00_1f.3.analog-stereo`. Requires the `pulse` feature.
+///
+/// # Errors
+///
+/// Returns [`OxiSoundError::NoDevice`] when no sink of that name exists, plus the usual
+/// connection failures.
+///
+/// # Examples
+///
+/// ```no_run
+/// # #[cfg(feature = "pulse")]
+/// # {
+/// use oxisound::StreamConfig;
+/// let mut stream = oxisound::pulse_output_named(
+///     "alsa_output.pci-0000_00_1f.3.analog-stereo",
+///     StreamConfig::stereo_48k(),
+/// )
+/// .expect("open failed");
+/// # }
+/// ```
+#[must_use = "handle or discard the returned stream"]
+#[cfg(feature = "pulse")]
+pub fn pulse_output_named(
+    name: &str,
+    config: StreamConfig,
+) -> Result<Box<dyn OutputStream>, OxiSoundError> {
+    PulseDevice::open_named(
+        name,
+        PulseDeviceRole::Sink,
+        oxisound_pulse::DEFAULT_CLIENT_NAME,
+    )?
+    .open_output(config)
+}
+
+/// Opens a capture stream on a named PulseAudio source.
+///
+/// `name` is the server-side source name from [`DeviceInfo::name`]. A sink's monitor
+/// source — the way to capture system output on Linux — is that sink's name with a
+/// `.monitor` suffix. Requires the `pulse` feature.
+///
+/// # Errors
+///
+/// Returns [`OxiSoundError::NoDevice`] when no source of that name exists, plus the usual
+/// connection failures.
+///
+/// # Examples
+///
+/// ```no_run
+/// # #[cfg(feature = "pulse")]
+/// # {
+/// use oxisound::StreamConfig;
+/// // Capture what is currently playing.
+/// let mut stream = oxisound::pulse_input_named(
+///     "alsa_output.pci-0000_00_1f.3.analog-stereo.monitor",
+///     StreamConfig::stereo_48k(),
+/// )
+/// .expect("open failed");
+/// # }
+/// ```
+#[must_use = "handle or discard the returned stream"]
+#[cfg(feature = "pulse")]
+pub fn pulse_input_named(
+    name: &str,
+    config: StreamConfig,
+) -> Result<Box<dyn InputStream>, OxiSoundError> {
+    PulseDevice::open_named(
+        name,
+        PulseDeviceRole::Source,
+        oxisound_pulse::DEFAULT_CLIENT_NAME,
+    )?
+    .open_input(config)
+}
 
 // ---------------------------------------------------------------------------
 // OSC (Open Sound Control) re-exports
@@ -712,11 +964,20 @@ pub fn preferred_output_config() -> Result<StreamConfig, OxiSoundError> {
 
 /// Returns all available audio devices (both input and output) in a single call.
 ///
+/// # Invariant
+///
+/// **Enumeration never yields a device with neither role**: every returned
+/// [`DeviceInfo`] has `is_input == true`, `is_output == true`, or both.  Devices that
+/// the backend advertises but cannot open in either direction (for example an HDMI sink
+/// with no monitor attached on Linux/ALSA) are omitted from the list, because they can
+/// never be opened as a stream.
+///
 /// # Examples
 ///
 /// ```no_run
 /// let devices = oxisound::enumerate_all_devices().expect("enumeration failed");
 /// for d in &devices {
+///     assert!(d.is_input || d.is_output);
 ///     println!("{}", d.name);
 /// }
 /// ```
@@ -845,10 +1106,14 @@ fn request_microphone_permission_impl() -> Result<bool, OxiSoundError> {
 // Stream statistics and monitoring
 // ---------------------------------------------------------------------------
 
-/// Returns a snapshot of the stream's statistics, or `None` if no data has been collected yet.
+/// Returns a snapshot of the stream's statistics.
 ///
-/// Returns `Some(stats)` when the stream has processed at least one frame or recorded at least
-/// one underrun; returns `None` for a freshly opened stream with default (all-zero) stats.
+/// `OutputStream::stats()` is infallible (it defaults to
+/// [`StreamStats::default()`](oxisound_core::StreamStats) when a backend doesn't track a
+/// particular field), so this always returns `Some`. A freshly opened, perfectly healthy stream
+/// that hasn't processed a frame yet legitimately reports all-zero fields — that is not the same
+/// thing as "stats are unavailable", so callers must not treat an all-zero snapshot as an error
+/// condition. The `Option` wrapper is kept for API stability; it is never `None`.
 ///
 /// # Examples
 ///
@@ -861,12 +1126,7 @@ fn request_microphone_permission_impl() -> Result<bool, OxiSoundError> {
 /// ```
 #[must_use]
 pub fn stream_stats(stream: &dyn oxisound_core::OutputStream) -> Option<StreamStats> {
-    let s = stream.stats();
-    if s.frames_processed > 0 || s.underruns > 0 || s.overruns > 0 || s.latency_frames > 0 {
-        Some(s)
-    } else {
-        None
-    }
+    Some(stream.stats())
 }
 
 /// RAII guard returned by [`monitor_stream`]. Dropping it stops the monitoring thread.

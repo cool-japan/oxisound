@@ -1,7 +1,15 @@
 # oxisound-cpal TODO
 
 ## Status
-cpal-backed implementation of `AudioDevice` trait. Lock-free SPSC ring buffers (ringbuf 0.5.0) for all stream types. Implements `CpalDevice` with enumerate (output+input), default output/input, output/input/duplex streams. Sample format dispatch (F32/I16/U16/I8/I32/F64), config validation, capacity-capped ring buffers (~2s), underrun counting, disconnect detection. JACK and ASIO opt-in features. Host selection via `CpalDevice::with_host(HostApi)`. Async output/input streams (tokio feature) with mpsc-backed capture. M0-M5 complete. Approximately 1477 SLOC including tests.
+cpal-backed implementation of `AudioDevice` trait. Lock-free SPSC ring buffers (ringbuf 0.5.0) for all stream types. Implements `CpalDevice` with enumerate (output+input), default output/input, output/input/duplex streams. Sample format dispatch (F32/I16/U16/I8/I32/F64), config validation, capacity-capped ring buffers (~2s), underrun counting, disconnect detection. Host selection via `CpalDevice::with_host(HostApi)`. Async output/input streams (tokio feature) with mpsc-backed capture. M0-M5 complete.
+
+> **2026-08-06 correction:** this Status paragraph previously claimed "JACK and ASIO opt-in
+> features". Both were **removed from this crate in 0.2.0** under Pure Rust Policy v2 §5 (a pure
+> adapter crate may not feature-gate FFI) — verified: `[features]` in `Cargo.toml` contains only
+> `tokio`, and no `#[cfg(feature = "jack")]` / `#[cfg(feature = "asio")]` remains in `src/`.
+> `HostApi::Jack` and `HostApi::Asio` now unconditionally return `OxiSoundError::UnsupportedConfig`
+> (`src/device.rs`). Native JACK lives solely in the `oxisound-jack` quarantine crate; ASIO has no
+> quarantine crate at all. See the `[0.2.0]` entry in the workspace `CHANGELOG.md`.
 
 ## Core Implementation
 
@@ -46,7 +54,14 @@ cpal-backed implementation of `AudioDevice` trait. Lock-free SPSC ring buffers (
 
 ### PipeWire Backend
 - [x] Investigate cpal PipeWire support status in cpal 0.17.3 and document findings (~research)
-- [ ] If cpal exposes `pipewire` feature: add `pipewire = ["cpal/pipewire"]` feature flag and `HostApi::PipeWire` mapping (~10 SLOC) — **Blocked upstream:** cpal 0.17.3 does not expose a `pipewire` feature; PipeWire users should use the ALSA compatibility layer (PipeWire-ALSA) or the JACK bridge. Revisit when cpal exposes native PipeWire support.
+- [ ] If cpal exposes `pipewire` feature: add `pipewire = ["cpal/pipewire"]` feature flag and `HostApi::PipeWire` mapping (~10 SLOC) — **Blocked upstream:** cpal 0.17.3/0.18.1 does not expose a `pipewire` feature. Revisit when cpal exposes native PipeWire support.
+  > **2026-08-06 update:** this is no longer the workspace's answer for PipeWire users. As of
+  > 0.2.1, [`oxisound-pulse`](../oxisound-pulse) speaks the PulseAudio native protocol in 100 %
+  > Pure Rust, and PipeWire serves that same protocol through its `pipewire-pulse` compatibility
+  > service — so PipeWire (and PulseAudio) are supported today, with **no C library in the audio
+  > path at all**, unlike this crate's ALSA route. What remains blocked here is only the narrow
+  > case of cpal gaining a *native* PipeWire host. Recommend `oxisound-pulse` over the
+  > PipeWire-ALSA or JACK-bridge workarounds previously suggested.
 - [x] If cpal does not expose PipeWire: document ALSA compatibility path (PipeWire exposes ALSA interface) and JACK bridge option (~docs)
 
 ### Additional Sample Format Support

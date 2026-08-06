@@ -9,10 +9,11 @@ members = [
     "crates/oxisound-smf",
     "crates/oxisound-osc",
     "crates/oxisound-session",
+    "crates/oxisound-pulse",
 ]
 
 [workspace.package]
-version = "0.2.0"
+version = "0.2.1"
 edition = "2024"
 rust-version = "1.89"
 authors = ["COOLJAPAN OU (Team Kitasan)"]
@@ -21,14 +22,15 @@ repository = "https://github.com/cool-japan/oxisound"
 description = "OxiSound is the COOLJAPAN Pure-Rust audio device I/O layer."
 
 [workspace.dependencies]
-oxisound-core = { path = "crates/oxisound-core", version = "0.2.0" }
-oxisound-cpal = { path = "crates/oxisound-cpal", version = "0.2.0" }
-oxisound-midi = { path = "crates/oxisound-midi", version = "0.2.0" }
-oxisound-jack = { path = "crates/oxisound-jack", version = "0.2.0" }
-oxisound-smf = { path = "crates/oxisound-smf", version = "0.2.0" }
-oxisound-osc = { path = "crates/oxisound-osc", version = "0.2.0" }
-oxisound-session = { path = "crates/oxisound-session", version = "0.2.0" }
-oxiaudio-core = { version = "0.2.0" }
+oxisound-core = { path = "crates/oxisound-core", version = "0.2.1" }
+oxisound-cpal = { path = "crates/oxisound-cpal", version = "0.2.1" }
+oxisound-midi = { path = "crates/oxisound-midi", version = "0.2.1" }
+oxisound-jack = { path = "crates/oxisound-jack", version = "0.2.1" }
+oxisound-smf = { path = "crates/oxisound-smf", version = "0.2.1" }
+oxisound-osc = { path = "crates/oxisound-osc", version = "0.2.1" }
+oxisound-session = { path = "crates/oxisound-session", version = "0.2.1" }
+oxisound-pulse = { path = "crates/oxisound-pulse", version = "0.2.1" }
+oxiaudio-core = { version = "0.2.1" }
 # Quarantine FFI (Pure Rust Policy v2 §5): C-FFI/libjack2, requires libjack2 on system.
 # Consumed ONLY by the `oxisound-jack` quarantine crate's `jack-backend` feature —
 # NOT by any pure facade/adapter feature.
@@ -38,9 +40,9 @@ objc2 = { version = "0.6.4" }
 objc2-foundation = { version = "0.3.2" }
 objc2-avf-audio = { version = "0.3.2" }
 block2 = { version = "0.6.2" }
-oxiaudio = { version = "0.2.0" }
+oxiaudio = { version = "0.2.1" }
 midir = "0.11.0"
-thiserror = { version = "2.0.18" }
+thiserror = { version = "2.0.19" }
 # IMPORTANT: cpal backends (ALSA/CoreAudio/WASAPI) are auto-selected by cfg(target_os).
 # There are NO alsa/coreaudio/wasapi features — do NOT add them.
 # cpal's jack/asio passthrough features are REMOVED (Pure Rust Policy v2 §5): native
@@ -49,12 +51,20 @@ thiserror = { version = "2.0.18" }
 cpal = { version = "0.18.1", default-features = false }
 dasp_sample = "0.11.0"
 # Lock-free SPSC ring buffer — Pure Rust (no_std), used in audio callbacks.
-ringbuf = { version = "0.5.0" }
+ringbuf = { version = "0.5.1" }
+# 100% Pure-Rust implementation of the PulseAudio native IPC protocol (no libpulse, no C).
+# Linux-only: consumed exclusively by `oxisound-pulse` through a
+# `[target.'cfg(target_os = "linux")'.dependencies]` section — every other target
+# compiles that crate's Pure-Rust stub instead.
+pulseaudio = { version = "0.3.1" }
+# Minimal `block_on` executor used to drive the (async) PulseAudio client API from
+# OxiSound's synchronous trait surface, always under an explicit timeout.
+futures-executor = { version = "0.3.33" }
 tokio = { version = "1.52.3", features = ["sync", "rt", "net", "macros", "time"] }
 futures-core = "0.3.32"
 futures-util = { version = "0.3.32", default-features = false, features = ["sink", "std"] }
 tokio-stream = { version = "0.1", features = ["sync"] }
-tokio-tungstenite = { version = "0.29.0", default-features = false, features = ["handshake"] }
+tokio-tungstenite = { version = "0.30.0", default-features = false, features = ["handshake"] }
 log = "0.4.33"
 proptest = "1"
 criterion = { version = "0.8", features = ["html_reports"] }

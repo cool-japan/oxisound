@@ -25,8 +25,15 @@ unused-allowed-license = "allow"
 multiple-versions = "warn"
 # Deny known problematic crates (COOLJAPAN Pure-Rust policy: no ASIO/JACK C FFI by default).
 deny = [
+    # No quarantine crate exists for ASIO yet (see workspace Cargo.toml comment on the
+    # `cpal` entry) — banned outright, no wrapper exception.
     { crate = "asio-sys" },
-    { crate = "jack-sys" },
+    # jack-sys is the raw libjack2 C-FFI. It is confined to the `oxisound-jack`
+    # quarantine crate (Pure Rust Policy v2 §5), reached ONLY via the safe `jack`
+    # binding crate's own dependency on jack-sys (never a direct oxisound-jack dep).
+    # `wrappers` allows it when — and only when — `jack` is its sole direct
+    # dependent, so any *other* future path to jack-sys is still denied.
+    { crate = "jack-sys", wrappers = ["jack"] },
 ]
 
 [advisories]

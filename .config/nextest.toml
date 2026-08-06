@@ -1,0 +1,59 @@
+# Nextest configuration (cargo-nextest 0.9.136).
+#
+# Two Linux realities drive everything in this file (PipeWire 1.6.2 with
+# pipewire-alsa + pipewire-pulse; macOS/CoreAudio is unaffected):
+#
+# 1. Nextest's default slow-timeout only *reports* SLOW tests — it never
+#    terminates them. A single wedged test therefore hangs the whole run
+#    forever. `terminate-after` below is the backstop: 2 × 30s periods,
+#    then SIGTERM with a 10s grace period before SIGKILL, so no test can
+#    stall a run for more than ~70s.
+#
+# 2. When many test processes open/close audio streams concurrently, the
+#    PipeWire ALSA plugin intermittently blocks forever on a pw_thread_loop
+#    condition (futex wait) during stream open. The same churn drives the
+#    sink node through ERROR/CREATING, which pipewire-pulse reports as sink
+#    state -3 (PA_SINK_UNLINKED) — the pure-Rust `pulseaudio` crate (0.3.1)
+#    cannot parse that, so oxisound-pulse live_server tests fail with a
+#    protocol error. Serializing every device-touching test into the
+#    `audio-device` group (max-threads = 1, Linux only) removes the trigger;
+#    the timeout above remains the safety net if the plugin wedges anyway.
+#
+# The `stress` profile deliberately drops the serialization so
+# `cargo nextest run --profile stress` reproduces the concurrency storm for
+# debugging. NOTE: nextest evaluates the selected profile's overrides first,
+# then appends `profile.default`'s overrides — default overrides DO apply to
+# other profiles. The stress profile therefore carries a counter-override
+# pinning the same tests back to the built-in `@global` group; being
+# evaluated first, it wins over the serializing override below.
+
+[profile.default]
+slow-timeout = { period = "30s", terminate-after = 2, grace-period = "10s" }
+
+[test-groups]
+# Everything that can open a real audio/MIDI device. One at a time on Linux.
+audio-device = { max-threads = 1 }
+
+[[profile.default.overrides]]
+# Serialization is only needed on Linux (see header); other platforms keep
+# full parallelism.
+platform = 'cfg(target_os = "linux")'
+test-group = 'audio-device'
+# - oxisound-cpal lib tests under the root `tests::` module open real streams.
+# - Every integration-test binary of the facade crate drives real devices.
+# - oxisound-pulse's live_server binary talks to a live pipewire-pulse server.
+# - oxisound-midi opens the ALSA sequencer via midir.
+filter = '(package(oxisound-cpal) and test(/^tests::/)) or (package(oxisound) and kind(test)) or (package(oxisound-pulse) and binary(live_server)) or (package(oxisound-midi))'
+
+# --- Stress profile: reproduce the PipeWire concurrency storm on purpose ---
+[profile.stress]
+# Same backstop as default: a wedged pw_thread_loop must still be killed.
+slow-timeout = { period = "30s", terminate-after = 2, grace-period = "10s" }
+
+[[profile.stress.overrides]]
+# Counter-override: same platform + filter as the default serializer, but
+# back in the global group. Selected-profile overrides are evaluated before
+# default-profile ones, so this wins and stress runs fully parallel.
+platform = 'cfg(target_os = "linux")'
+test-group = '@global'
+filter = '(package(oxisound-cpal) and test(/^tests::/)) or (package(oxisound) and kind(test)) or (package(oxisound-pulse) and binary(live_server)) or (package(oxisound-midi))'

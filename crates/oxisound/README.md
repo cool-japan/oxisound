@@ -5,7 +5,7 @@
 
 `oxisound` is the top-level façade crate for the OxiSound ecosystem. It gives you one flat, ergonomic API — `open_output`, `open_input`, `play_callback`, `enumerate_devices`, and friends — that hides which backend is doing the work. Cargo feature flags select the backend: the default `pure` feature uses the cpal backend ([`oxisound-cpal`](../oxisound-cpal)), while optional features pull in native JACK ([`oxisound-jack`](../oxisound-jack)), MIDI device I/O ([`oxisound-midi`](../oxisound-midi)), Standard MIDI File support ([`oxisound-smf`](../oxisound-smf)), or Open Sound Control ([`oxisound-osc`](../oxisound-osc)). All device traits and shared types come from [`oxisound-core`](../oxisound-core) and are re-exported at the crate root, so most programs only ever `use oxisound::…`.
 
-The crate is `#![forbid(unsafe_code)]` at the facade layer. **Pure-Rust status depends on the features you enable.** The default `pure` (cpal), `tokio`, `midi`, `smf`, and `osc` paths are Pure Rust.
+The crate is `#![forbid(unsafe_code)]` at the facade layer. **Pure-Rust status depends on the features you enable.** The default `pure` (cpal), `tokio`, `midi`, `smf`, `osc`, and `pulse` paths are Pure Rust — and `pulse` (new in 0.2.1) is the only Linux backend with no C library anywhere in the audio path, since cpal reaches Linux hardware through `alsa-lib`.
 
 > **0.2.0 change:** The `jack`, `jack-native`, and `asio` features have been removed from this facade (COOLJAPAN Pure Rust Policy v2 §5 — FFI quarantine enforcement). Applications requiring native JACK must depend on `oxisound-jack` directly with its `jack-backend` feature. ASIO support requires a future dedicated quarantine crate.
 
@@ -14,16 +14,19 @@ The crate is `#![forbid(unsafe_code)]` at the facade layer. **Pure-Rust status d
 ```toml
 [dependencies]
 # Default: Pure-Rust cpal backend
-oxisound = "0.2.0"
+oxisound = "0.2.1"
 
 # Async streaming (tokio) + Pure-Rust playback
-oxisound = { version = "0.2.0", features = ["tokio"] }
+oxisound = { version = "0.2.1", features = ["tokio"] }
 
 # Add live MIDI + Standard MIDI File playback
-oxisound = { version = "0.2.0", features = ["midi", "smf"] }
+oxisound = { version = "0.2.1", features = ["midi", "smf"] }
 
 # Add Open Sound Control
-oxisound = { version = "0.2.0", features = ["osc"] }
+oxisound = { version = "0.2.1", features = ["osc"] }
+
+# Pure-Rust PulseAudio / PipeWire backend on Linux (new in 0.2.1; opt-in, not in default)
+oxisound = { version = "0.2.1", features = ["pulse"] }
 ```
 
 ## Quick Start
@@ -63,6 +66,7 @@ print!("{}", oxisound::format_devices(&devices));
 | Feature | Default | Pure Rust | Pulls in | Enables |
 |---------|:-------:|:---------:|----------|---------|
 | `pure` | ✓ | ✓ | `oxisound-cpal` | cpal backend: `CpalDevice`, blocking + callback streams, device watch/hot-plug, auto-reconnect |
+| `pulse` | — | ✓ | `oxisound-pulse` | Pure-Rust PulseAudio native-protocol backend (also PipeWire via `pipewire-pulse`): `PulseDevice`, `pulse_output`/`pulse_input`/`pulse_duplex`, `pulse_*_named`, `pulse_enumerate_devices`. Linux only; a Pure-Rust `Unsupported` stub elsewhere |
 | `tokio` | — | ✓ | `oxisound-cpal/tokio`, `tokio-stream`, `futures-core` | Async I/O: `async_output`, `capture_stream`, `watch_devices`, `AsyncInputStream`/`AsyncOutputStream` |
 | `midi` | — | ✓ | `oxisound-midi` | Live MIDI device I/O: `enumerate_midi_devices`, `open_midi_input`, `open_midi_output` |
 | `smf` | — | ✓ | `oxisound-smf` | Standard MIDI File read/play: `load_smf`, SMF re-exports (`SmfFile`, `SmfPlayer`, …) |
@@ -121,7 +125,7 @@ Pure-computation helpers that return interleaved `Vec<f32>` buffers — handy fo
 
 | Item | Feature | Description |
 |------|---------|-------------|
-| `stream_stats(&dyn OutputStream) -> Option<StreamStats>` | always | Snapshot of stream stats, or `None` if nothing collected yet |
+| `stream_stats(&dyn OutputStream) -> Option<StreamStats>` | always | Snapshot of stream stats (always `Some`; `stats()` is infallible — all-zero fields mean an idle/new stream, not "unavailable") |
 | `monitor_stream(stats_fn, interval_ms, callback) -> MonitorGuard` | non-wasm | Periodically sample stats from a background thread |
 | `on_device_change(FnMut(DeviceEvent)) -> DeviceChangeGuard` | `pure`, non-wasm | Synchronous callback on device add/remove/default-change (500 ms polling) |
 | `auto_reconnect_output(config) -> AutoReconnectGuard` | `pure`, non-wasm | Output stream that auto-reconnects on disconnect (exponential backoff 10→50→200→1000 ms); implements `OutputStream`, with `is_connected()` / `config()` |
@@ -149,6 +153,30 @@ Pure-computation helpers that return interleaved `Vec<f32>` buffers — handy fo
 | `load_smf(&[u8]) -> Result<SmfFile, SmfError>` | `smf` | Parse a `.mid` byte buffer |
 | `play_smf(&Path, midi_port)` | `smf` + `midi` | Parse a file and play it straight to a MIDI port (blocking) |
 | re-exports | `smf` | `SmfFile`, `SmfTrack`, `TrackEvent`, `SmfEvent`, `SmfFormat`, `Division`, `SmfPlayer`, `TempoMap`, `SmfError`, `parse_smf` |
+
+### PulseAudio / PipeWire (`pulse` feature, Linux)
+
+Pure Rust end to end — no `libpulse`, no `alsa-lib`, no C in the audio path. PipeWire is
+covered through its `pipewire-pulse` compatibility service. On non-Linux targets these
+functions compile but return `OxiSoundError::Unsupported`.
+
+| Function | Returns | Description |
+|----------|---------|-------------|
+| `pulse_enumerate_devices()` | `Vec<DeviceInfo>` | Every usable sink and source; sinks → `is_output`, sources (incl. `.monitor`) → `is_input` |
+| `pulse_default_output()` / `pulse_default_input()` | `PulseDevice` | The server's default sink / source |
+| `pulse_output(config)` | `Box<dyn OutputStream>` | Playback on the default sink |
+| `pulse_input(config)` | `Box<dyn InputStream>` | Capture on the default source |
+| `pulse_duplex(config)` | `Box<dyn DuplexStream>` | Duplex over a single connection |
+| `pulse_output_named(name, config)` | `Box<dyn OutputStream>` | Playback on a named sink |
+| `pulse_input_named(name, config)` | `Box<dyn InputStream>` | Capture on a named source — pass `"<sink>.monitor"` to record system output |
+
+Re-exported under the feature: `PulseDevice`, `PulseOutputStream`, `PulseInputStream`,
+`PulseDuplexStream`. See [`oxisound-pulse`](../oxisound-pulse) for the full API, the
+architecture notes, and the explicit list of what is deliberately not implemented (SHM/memfd
+zero-copy, volume/mute, module loading, hot-plug subscriptions).
+
+> `CpalDevice::with_host(HostApi::PulseAudio)` still returns an error and will keep doing so —
+> cpal has no PulseAudio host to dispatch to, which is exactly why `oxisound-pulse` exists.
 
 ### Open Sound Control (`osc` feature)
 
@@ -178,14 +206,21 @@ Backend-specific re-exports appear under their features: `CpalDevice`, `CpalOutp
 | Callback mode | ✓ | ✓ | ✓ | ✓ | — |
 | Device hot-plug | ✓ | ✓ | ✓ | — | — |
 | Auto-reconnect | ✓ | ✓ | ✓ | — | — |
-| JACK | ✓ | ✓ | — | — | — |
-| ASIO | — | — | ✓ | — | — |
+| PulseAudio / PipeWire (`pulse`) | — | ✓ | — | — | — |
+| JACK (via `oxisound-jack`, not this facade) | ✓ | ✓ | — | — | — |
+| ASIO | — | — | — | — | — |
 | Loopback capture | — | ✓ (Pulse/PipeWire) | planned | — | — |
+
+> **JACK** is reached by depending on [`oxisound-jack`](../oxisound-jack) directly with its
+> `jack-backend` feature — it is not exposed through this facade (see the 0.2.0 note above).
+> **ASIO** is not implemented anywhere in the workspace: it would need its own
+> `oxisound-*-asio` quarantine crate, which does not exist yet.
 
 ## Related crates
 
 - [`oxisound-core`](../oxisound-core) — device/stream traits and shared types (re-exported here)
 - [`oxisound-cpal`](../oxisound-cpal) — the default Pure-Rust cpal backend (`pure`, `tokio`, `wasm`)
+- [`oxisound-pulse`](../oxisound-pulse) — Pure-Rust PulseAudio native-protocol backend, also covering PipeWire via `pipewire-pulse` (`pulse`; Linux, stub elsewhere)
 - [`oxisound-jack`](../oxisound-jack) — native JACK client quarantine crate (C-FFI, use directly with `jack-backend` feature; not exposed through this facade since 0.2.0)
 - [`oxisound-midi`](../oxisound-midi) — live MIDI device I/O (`midi`)
 - [`oxisound-smf`](../oxisound-smf) — Standard MIDI File reader/writer/player (`smf`)

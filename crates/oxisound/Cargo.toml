@@ -19,6 +19,12 @@ smf = ["dep:oxisound-smf"]
 oxiaudio = ["pure", "oxisound-core/oxiaudio"]
 wasm = ["pure", "oxisound-cpal/wasm"]
 osc = ["dep:oxisound-osc"]
+# Opt-in, NOT in `default`. Pure-Rust PulseAudio native-protocol backend (also serves
+# PipeWire through pipewire-pulse). On Linux it is the only backend with no C library in
+# the audio path; on every other target `oxisound-pulse` compiles as a Pure-Rust stub, so
+# enabling the feature never breaks a build. Making it the Linux default is a release
+# decision and is deliberately left to the user.
+pulse = ["dep:oxisound-pulse"]
 # NOTE (Pure Rust Policy v2 §5): JACK support is NOT a facade feature. Native JACK
 # (C-FFI/libjack2) lives in the `oxisound-jack` quarantine crate — apps that need it
 # depend on `oxisound-jack` DIRECTLY. ASIO (Steinberg SDK, C++) likewise must live in
@@ -36,6 +42,7 @@ oxisound-midi = { workspace = true, optional = true }
 oxisound-smf = { workspace = true, optional = true }
 oxisound-osc = { workspace = true, optional = true }
 oxisound-session = { workspace = true, optional = true }
+oxisound-pulse = { workspace = true, optional = true }
 futures-core = { workspace = true, optional = true }
 tokio-stream = { workspace = true, optional = true }
 log = { workspace = true }
@@ -76,6 +83,10 @@ required-features = ["smf", "midi"]
 [[example]]
 name = "smf_synth"
 required-features = ["smf"]
+
+[[example]]
+name = "osc_bridge"
+required-features = ["osc"]
 
 [[bench]]
 name = "facade"

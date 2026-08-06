@@ -16,3 +16,6 @@ std = []
 
 [dependencies]
 log = { workspace = true }
+
+[dev-dependencies]
+proptest = { workspace = true }

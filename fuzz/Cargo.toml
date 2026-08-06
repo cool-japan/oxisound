@@ -1,0 +1,43 @@
+[package]
+name = "oxisound-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2021"
+
+# `libfuzzer-sys` is a non-published, non-member dev tool: it exists only to fuzz the two
+# untrusted-input parsers in the main workspace (OSC datagrams from `OscReceiver::recv`, and
+# Standard MIDI File bytes from `oxisound_smf::parse`) and is never built as part of a normal
+# `cargo build`/`cargo test` run.
+[package.metadata]
+cargo-fuzz = true
+
+# This crate is intentionally its OWN workspace (empty table), not a member of the root
+# `oxisound` workspace, for two reasons: (1) `cargo build --workspace` / `cargo nextest run
+# --workspace` at the repo root must not need a fuzzing toolchain (typically nightly) to
+# succeed, and (2) neither `oxisound-osc` nor `oxisound-smf` need an `exclude = ["fuzz"]` in
+# their own `[package]` to keep this directory out of their published tarball — it simply
+# isn't attached to any published package's manifest at all.
+[workspace]
+
+[dependencies]
+libfuzzer-sys = "0.4"
+
+[dependencies.oxisound-osc]
+path = "../crates/oxisound-osc"
+
+[dependencies.oxisound-smf]
+path = "../crates/oxisound-smf"
+
+[[bin]]
+name = "osc_decode"
+path = "fuzz_targets/osc_decode.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "smf_parse"
+path = "fuzz_targets/smf_parse.rs"
+test = false
+doc = false
+bench = false

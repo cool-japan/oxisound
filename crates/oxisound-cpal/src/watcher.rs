@@ -17,6 +17,19 @@ use std::sync::{
 
 /// Monitors device changes by polling the device list periodically (~500ms intervals).
 ///
+/// # Event payloads are name-only stubs
+///
+/// The [`DeviceInfo`](oxisound_core::DeviceInfo) delivered with `DeviceEvent::DeviceAdded`
+/// carries only the device name; `is_input`, `is_output`, sample rates and capabilities keep
+/// their default values.
+/// Filling them in would require opening the device (`supported_input_configs` /
+/// `supported_output_configs`), an unbounded backend call: on Linux/ALSA a broken PCM — the
+/// very case hot-plug notification exists for — can block inside `snd_pcm_open`, and this
+/// watcher's thread is joined by `Drop`, so a probe here would turn `drop(watcher)` into a
+/// hang.  Callers that need roles should call
+/// [`CpalDevice::enumerate_all`](crate::CpalDevice::enumerate_all) in response to an event;
+/// that function probes once, off the polling thread, and never yields a role-less device.
+///
 /// On `wasm32`, this struct exists but `start()` is not available — use Web Audio API events
 /// for device notifications instead.
 pub struct CpalDeviceWatcher {

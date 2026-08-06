@@ -57,6 +57,9 @@ impl OscTimeTag {
 pub enum OscArg {
     Int(i32),
     Float(f32),
+    /// Must not contain an embedded NUL (`'\0'`) byte — see [`encode`]'s
+    /// precondition docs. Non-ASCII (but NUL-free) UTF-8 round-trips correctly even though
+    /// strict OSC 1.0 restricts string content to printable ASCII.
     String(String),
     Blob(Vec<u8>),
     Long(i64),
@@ -97,6 +100,8 @@ impl OscArg {
 /// A complete OSC message: an address pattern and zero or more typed arguments.
 #[derive(Debug, Clone, PartialEq)]
 pub struct OscMessage {
+    /// Must not contain an embedded NUL (`'\0'`) byte — see [`encode`]'s
+    /// precondition docs.
     pub address: String,
     pub args: Vec<OscArg>,
 }

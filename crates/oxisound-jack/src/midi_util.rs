@@ -22,9 +22,12 @@ pub enum SysExEvent {
 ///
 /// # Example
 ///
-/// ```rust,ignore
+/// ```rust
+/// use oxisound_jack::midi_util::{SysExEvent, SysExReassembler};
+///
 /// let mut asm = SysExReassembler::new();
-/// let _ = asm.feed(&[0xF0, 0x41]);  // begin SysEx
+/// let events = asm.feed(&[0xF0, 0x41]); // begin SysEx
+/// assert!(events.is_empty()); // not yet complete
 /// let events = asm.feed(&[0x10, 0xF7]); // finish SysEx
 /// assert!(matches!(&events[0], SysExEvent::Complete(_)));
 /// ```
@@ -114,7 +117,9 @@ impl Default for SysExReassembler {
 ///
 /// # Examples
 ///
-/// ```rust,ignore
+/// ```rust
+/// use oxisound_jack::midi_util::midi_message_len;
+///
 /// assert_eq!(midi_message_len(0x90), Some(3)); // NoteOn
 /// assert_eq!(midi_message_len(0xF0), None);    // SysEx — variable length
 /// assert_eq!(midi_message_len(0xF8), Some(1)); // Realtime Clock

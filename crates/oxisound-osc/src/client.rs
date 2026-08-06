@@ -6,6 +6,16 @@ use std::net::{SocketAddr, UdpSocket};
 use crate::{OscArg, OscError, OscMessage, OscPacket, encode};
 
 /// Sends OSC packets over UDP to a fixed target address.
+///
+/// # Example
+///
+/// ```rust,no_run
+/// use oxisound_osc::{OscArg, OscSender};
+///
+/// let sender = OscSender::connect("127.0.0.1:57120")?;
+/// sender.send_message("/synth/note", vec![OscArg::Int(60), OscArg::Float(0.8)])?;
+/// # Ok::<(), oxisound_osc::OscError>(())
+/// ```
 pub struct OscSender {
     socket: UdpSocket,
     target: SocketAddr,

@@ -7,6 +7,16 @@ use alloc::{string::String, vec::Vec};
 use crate::{OscArg, OscBundle, OscMessage, OscPacket, OscTimeTag};
 
 /// Encodes an OSC packet (message or bundle) into a byte vector.
+///
+/// # Precondition: no embedded NUL in strings
+///
+/// Every string this packet carries — [`OscMessage::address`](crate::OscMessage::address) and
+/// any [`OscArg::String`] — must not contain an embedded NUL (`'\0'`) byte. `encode` is
+/// infallible and does not validate this: an embedded NUL does not produce an error, it
+/// silently produces a packet that decodes back to a truncated string (the decoder treats the
+/// first NUL as the end-of-string marker) with the remaining bytes reinterpreted as unrelated
+/// packet data. Callers that accept string content from outside the program are responsible
+/// for rejecting or escaping embedded NULs before constructing an [`OscMessage`]/[`OscArg`].
 pub fn encode(packet: &OscPacket) -> Vec<u8> {
     let mut buf = Vec::new();
     encode_packet(packet, &mut buf);
@@ -98,6 +108,20 @@ fn write_timetag(t: &OscTimeTag, buf: &mut Vec<u8>) {
 }
 
 /// Writes `s` followed by a NUL terminator, then pads to the next 4-byte boundary.
+///
+/// # Precondition
+///
+/// `s` must not contain an embedded NUL (`'\0'`) byte. OSC strings are NUL-terminated on the
+/// wire, so `read_str` (the decoder counterpart) stops at the *first* NUL it finds. Passing a
+/// string with an embedded NUL therefore does not error here — it silently produces a packet
+/// that decodes back to a *truncated* string, with the bytes after the embedded NUL
+/// reinterpreted as whatever comes next (the type-tag string or the following argument). This
+/// function is infallible by design (matching [`encode`]'s infallible signature), so the
+/// precondition is enforced by the caller, not by this function; construct [`OscArg::String`]
+/// and [`OscMessage::address`](crate::OscMessage::address) values accordingly. OSC 1.0 also
+/// specifies printable-ASCII string content — this implementation is more permissive and
+/// accepts any NUL-free valid UTF-8, which round-trips correctly but is technically off-spec
+/// for non-ASCII text.
 fn write_str(s: &str, buf: &mut Vec<u8>) {
     buf.extend_from_slice(s.as_bytes());
     buf.push(0); // NUL terminator
@@ -105,6 +129,14 @@ fn write_str(s: &str, buf: &mut Vec<u8>) {
 }
 
 /// Writes a 4-byte big-endian length, then the blob bytes, then pads to 4-byte boundary.
+///
+/// # Precondition
+///
+/// `b.len()` must fit in a `u32` (OSC blobs are length-prefixed with a 4-byte big-endian
+/// count). A longer blob is not rejected — `b.len() as u32` silently truncates the stored
+/// length, which corrupts the packet (the writer still emits all of `b`'s bytes, but the
+/// decoder will only read back the truncated count). Not reachable in practice on a 64-bit
+/// target without first allocating a multi-gigabyte buffer.
 fn write_blob(b: &[u8], buf: &mut Vec<u8>) {
     buf.extend_from_slice(&(b.len() as u32).to_be_bytes());
     buf.extend_from_slice(b);
@@ -122,7 +154,12 @@ fn pad4(buf: &mut Vec<u8>) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    // Explicit `alloc` imports: under `--no-default-features` (no_std), `vec!` and
+    // `.to_string()` are not in scope via any prelude the way they are under `std` — unlike
+    // this crate's other test modules (e.g. `decode.rs`), this file's top-level `use` only
+    // pulls in `String`/`Vec`, not the `vec!` macro or `ToString`.
     use crate::{OscArg, OscMessage, OscPacket, OscTimeTag, decode};
+    use alloc::{string::ToString, vec};
 
     fn msg(address: &str, args: Vec<OscArg>) -> OscPacket {
         OscPacket::Message(OscMessage {
@@ -181,6 +218,31 @@ mod tests {
         let bytes = encode(&packet);
         let decoded = decode(&bytes).expect("decode failed");
         assert_eq!(decoded, packet);
+    }
+
+    #[test]
+    fn embedded_nul_in_string_arg_silently_truncates_on_roundtrip() {
+        // Documents (rather than fixes) the precondition on `write_str`/`encode`: an
+        // embedded NUL in an `OscArg::String` is not rejected — the decoder's `read_str`
+        // stops at the *first* NUL, so the value that comes back out is silently truncated
+        // instead of matching what went in. This test exists so the hazard has a permanent,
+        // executable demonstration instead of only living in a doc comment; it intentionally
+        // asserts the *broken* (truncated) round-trip, not equality with the original.
+        let packet = msg("/nul", vec![OscArg::String("abc\0def".to_string())]);
+        let bytes = encode(&packet);
+        let decoded = decode(&bytes)
+            .expect("decode of a well-formed (if semantically broken) packet must still succeed");
+        match decoded {
+            OscPacket::Message(m) => match &m.args[0] {
+                OscArg::String(s) => assert_eq!(
+                    s, "abc",
+                    "embedded NUL must truncate the string at the first NUL byte, matching the \
+                     documented precondition on OscArg::String / OscMessage::address"
+                ),
+                other => panic!("expected OscArg::String, got {other:?}"),
+            },
+            other => panic!("expected OscPacket::Message, got {other:?}"),
+        }
     }
 
     #[test]
