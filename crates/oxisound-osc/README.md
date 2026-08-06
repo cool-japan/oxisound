@@ -11,14 +11,14 @@ Within the OxiSound ecosystem this crate is the network-control layer: it lets a
 
 ```toml
 [dependencies]
-oxisound-osc = "0.2.1"
+oxisound-osc = "0.2.2"
 ```
 
 The default `std` feature enables the UDP transport. For embedded or `no_std` targets, disable it and use the encode/decode functions directly:
 
 ```toml
 [dependencies]
-oxisound-osc = { version = "0.2.1", default-features = false }
+oxisound-osc = { version = "0.2.2", default-features = false }
 ```
 
 ## Quick Start

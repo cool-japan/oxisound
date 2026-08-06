@@ -23,14 +23,14 @@ It works unchanged against both Linux sound servers:
 
 ```toml
 [dependencies]
-oxisound-pulse = "0.2.1"
+oxisound-pulse = "0.2.2"
 ```
 
 Or through the facade's opt-in feature (**not** in `default`):
 
 ```toml
 [dependencies]
-oxisound = { version = "0.2.1", features = ["pulse"] }
+oxisound = { version = "0.2.2", features = ["pulse"] }
 ```
 
 ## Quick Start

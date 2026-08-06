@@ -14,19 +14,19 @@ The crate is `#![forbid(unsafe_code)]` at the facade layer. **Pure-Rust status d
 ```toml
 [dependencies]
 # Default: Pure-Rust cpal backend
-oxisound = "0.2.1"
+oxisound = "0.2.2"
 
 # Async streaming (tokio) + Pure-Rust playback
-oxisound = { version = "0.2.1", features = ["tokio"] }
+oxisound = { version = "0.2.2", features = ["tokio"] }
 
 # Add live MIDI + Standard MIDI File playback
-oxisound = { version = "0.2.1", features = ["midi", "smf"] }
+oxisound = { version = "0.2.2", features = ["midi", "smf"] }
 
 # Add Open Sound Control
-oxisound = { version = "0.2.1", features = ["osc"] }
+oxisound = { version = "0.2.2", features = ["osc"] }
 
 # Pure-Rust PulseAudio / PipeWire backend on Linux (new in 0.2.1; opt-in, not in default)
-oxisound = { version = "0.2.1", features = ["pulse"] }
+oxisound = { version = "0.2.2", features = ["pulse"] }
 ```
 
 ## Quick Start

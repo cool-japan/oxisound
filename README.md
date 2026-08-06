@@ -64,7 +64,7 @@ There are NO alsa/coreaudio/wasapi Cargo features — do NOT add them.
 
 ```toml
 [dependencies]
-oxisound = "0.2.1"
+oxisound = "0.2.2"
 ```
 
 ```rust
@@ -205,7 +205,7 @@ It is **opt-in** — not part of `default = ["pure"]`:
 
 ```toml
 [dependencies]
-oxisound = { version = "0.2.1", features = ["pulse"] }
+oxisound = { version = "0.2.2", features = ["pulse"] }
 ```
 
 ```rust
@@ -264,7 +264,7 @@ subscription/hot-plug event stream.
 
 ```toml
 [dependencies]
-oxisound-jack = { version = "0.2.1", features = ["jack-backend"] }
+oxisound-jack = { version = "0.2.2", features = ["jack-backend"] }
 ```
 
 ```rust

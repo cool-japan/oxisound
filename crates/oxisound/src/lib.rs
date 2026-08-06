@@ -320,7 +320,7 @@ pub fn duplex_stream(config: StreamConfig) -> Result<Box<dyn DuplexStream>, OxiS
 //
 // JACK (libjack2 C-FFI) is NOT re-exported from this pure facade. Applications
 // that need it depend on the `oxisound-jack` crate directly:
-//     oxisound-jack = "0.2.1"
+//     oxisound-jack = "0.2.2"
 // and call e.g. `oxisound_jack::JackDevice::new(...)`.
 // ---------------------------------------------------------------------------
 

@@ -13,7 +13,7 @@ members = [
 ]
 
 [workspace.package]
-version = "0.2.1"
+version = "0.2.2"
 edition = "2024"
 rust-version = "1.89"
 authors = ["COOLJAPAN OU (Team Kitasan)"]
@@ -22,14 +22,14 @@ repository = "https://github.com/cool-japan/oxisound"
 description = "OxiSound is the COOLJAPAN Pure-Rust audio device I/O layer."
 
 [workspace.dependencies]
-oxisound-core = { path = "crates/oxisound-core", version = "0.2.1" }
-oxisound-cpal = { path = "crates/oxisound-cpal", version = "0.2.1" }
-oxisound-midi = { path = "crates/oxisound-midi", version = "0.2.1" }
-oxisound-jack = { path = "crates/oxisound-jack", version = "0.2.1" }
-oxisound-smf = { path = "crates/oxisound-smf", version = "0.2.1" }
-oxisound-osc = { path = "crates/oxisound-osc", version = "0.2.1" }
-oxisound-session = { path = "crates/oxisound-session", version = "0.2.1" }
-oxisound-pulse = { path = "crates/oxisound-pulse", version = "0.2.1" }
+oxisound-core = { path = "crates/oxisound-core", version = "0.2.2" }
+oxisound-cpal = { path = "crates/oxisound-cpal", version = "0.2.2" }
+oxisound-midi = { path = "crates/oxisound-midi", version = "0.2.2" }
+oxisound-jack = { path = "crates/oxisound-jack", version = "0.2.2" }
+oxisound-smf = { path = "crates/oxisound-smf", version = "0.2.2" }
+oxisound-osc = { path = "crates/oxisound-osc", version = "0.2.2" }
+oxisound-session = { path = "crates/oxisound-session", version = "0.2.2" }
+oxisound-pulse = { path = "crates/oxisound-pulse", version = "0.2.2" }
 oxiaudio-core = { version = "0.2.1" }
 # Quarantine FFI (Pure Rust Policy v2 §5): C-FFI/libjack2, requires libjack2 on system.
 # Consumed ONLY by the `oxisound-jack` quarantine crate's `jack-backend` feature —
